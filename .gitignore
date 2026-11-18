@@ -1,0 +1,13 @@
+# Python / Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Course reference notebooks (not part of the project)
+ref/
+
+# Raw data (the notebook downloads it again)
+data/bank-additional-full.csv
+
+# Created by training
+tuner_logs/
