@@ -1,29 +1,53 @@
 # Customer Response Prediction — UCI Bank Marketing
 
-An end-to-end deep learning pipeline that predicts whether a bank client will subscribe to a term deposit after a direct marketing call. The model ranks clients by their likelihood to respond, so marketing calls can be focused where they matter most.
+Predict whether a bank customer will subscribe to a term deposit (`y`), using the [UCI Bank Marketing](https://archive.ics.uci.edu/dataset/222/bank+marketing) dataset (`bank-additional-full.csv`, ≈11% "yes").
 
-**Dataset:** [UCI Bank Marketing](https://archive.ics.uci.edu/dataset/222/bank+marketing) (`bank-additional-full.csv`): 41,188 calls, 20 features, binary target `y` (≈11% positive).
-
-## Project Structure
+## Repo Structure
 
 ```
 customer-churn-prediction/
 ├── Bank_Marketing_EDA_Preprocessing.ipynb
 ├── data/
 │   └── bank_clean.csv
-├── src/
-│   ├── preprocess.py
-│   ├── models.py
-│   ├── train.py
-│   └── evaluate.py
-└── README.md
+└── src/
+    ├── preprocess.py
+    └── evaluate.py
 ```
 
-| Path | Description |
+| File | Purpose |
 |---|---|
-| `Bank_Marketing_EDA_Preprocessing.ipynb` | Data loading, exploratory data analysis, cleaning and feature preparation. Produces `data/bank_clean.csv`. |
-| `data/bank_clean.csv` | Cleaned dataset: duplicates removed, `previously_contacted` feature added, `duration` excluded (target leakage), target encoded as 0/1. |
-| `src/preprocess.py` | Stratified train / validation / test split (70/15/15), one-hot encoding and standard scaling fitted on the training set only, and class weights for the imbalanced target. |
-| `src/models.py` | Model architectures: a configurable ANN (L2, Dropout, BatchNorm), an autoencoder, and an encoder-based classifier. |
-| `src/train.py` | Trains the models and saves each trained model (`.keras`), its weights (`.weights.h5`) and its training history. |
-| `src/evaluate.py` | Compares the trained models on the validation and test sets (PR-AUC, ROC-AUC, F1, precision, recall) and generates learning curves and ROC / precision-recall plots. |
+| `Bank_Marketing_EDA_Preprocessing.ipynb` | Loads the raw data, explores and cleans it, and saves `bank_clean.csv` |
+| `data/bank_clean.csv` | Cleaned dataset used by every model (`duration` removed to avoid leakage) |
+| `src/preprocess.py` | Shared train / validation / test split and model inputs, fitted on train only |
+| `src/evaluate.py` | Shared evaluation: checks scores against the split and compares all models |
+
+## Model Plan
+
+| # | Role | Description | Notebook |
+|---|---|---|---|
+| 1 | ANN Regularization | Same network trained with no regularization, then L2, Dropout, BatchNorm and Early Stopping, to compare their effect | Pending |
+| 2 | ANN Entity Embeddings | Multi-input ANN with one Embedding layer per categorical column | Pending |
+| 3 | ANN Tuning & Class Imbalance | Keras Tuner search; class weights vs. focal loss | Pending |
+| 4 | Denoising Autoencoder + Classifier | Denoising autoencoder, then its encoder + a classifier, fine-tuned | Pending |
+| 5 | Autoencoder Anomaly Detection | Trained on "no" customers only; reconstruction error is the score | Pending |
+
+## Workflow
+
+1. **Load the shared split** from `src/preprocess.py`. Every notebook gets the same rows.
+   - Role 2 (embeddings): `get_embedding_data()`
+   - Roles 1, 3, 4, 5: `get_data()`
+2. **Build and train** your model in your own Colab notebook.
+3. **Pass your validation and test scores** to `evaluate_scores()` in `src/evaluate.py`. Then `python -m src.evaluate` builds the team comparison.
+
+```python
+!git clone https://github.com/sara-alsalmi/customer-churn-prediction.git
+%cd customer-churn-prediction
+
+from src.preprocess import get_data            # role 2: get_embedding_data
+from src.evaluate import evaluate_scores
+
+d = get_data()
+# ... build and train your model ...
+evaluate_scores("your_model", d["id_val"], d["y_val"], val_scores,
+                d["id_test"], d["y_test"], test_scores)
+```
