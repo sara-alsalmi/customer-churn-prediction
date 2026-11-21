@@ -6,7 +6,7 @@ So we asked: **can a model tell the bank who to call first?**
 
 This is our Deep Learning final project. We built five models (3 neural networks and 2 autoencoders) to predict which clients will say yes, before the bank picks up the phone.
 
-**Try it:** [Live demo](https://majed-codes.github.io/churn-desk-ae1/) · [Presentation](Churn_Presentation/The_Call_Presentation.html)
+**Try it:** [Live demo](https://majed-codes.github.io/churn-desk-ae1/) · [Presentation](https://sara-alsalmi.github.io/customer-churn-prediction/)
 
 ## The Data
 
@@ -75,9 +75,11 @@ The code is in [deployment/churn-desk](deployment/churn-desk/README.md). It has 
 
 ## Presentation
 
-[The_Call_Presentation.html](Churn_Presentation/The_Call_Presentation.html) is our final presentation.
+**[Open the presentation](https://sara-alsalmi.github.io/customer-churn-prediction/)** in your browser.
 
-To open it, **download the file and double-click it** (Chrome or Edge). GitHub only shows the code. Use the arrow keys or the ← → buttons to move, and press F for full screen. The last slide has a button that opens the live demo.
+Use the arrow keys or the ← → buttons to move, and press F for full screen. The last slide has a button that opens the live demo.
+
+The file is [Churn_Presentation/index.html](Churn_Presentation/index.html). You can also download it and open it offline.
 
 ## Run It Yourself
 
