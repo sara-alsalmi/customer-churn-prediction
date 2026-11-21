@@ -1,0 +1,6 @@
+model,epochs,val_pr_auc,gap
+No regularization,60,0.408,0.215
+L2,60,0.454,0.047
+Dropout,60,0.449,0.014
+BatchNorm,60,0.371,0.465
+All + Early Stopping,41,0.472,0.028
