@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>مكتب رصين · AE1</title>
+<meta name="theme-color" content="#06070b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./static/css/os.css">
+<link rel="stylesheet" href="./static/css/apps.css">
+<link rel="stylesheet" href="./static/css/mac.css">
+<link rel="stylesheet" href="./static/css/eggs.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2306070b'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23c9c3ff'/%3E%3C/svg%3E">
+</head>
+<body>
+<a class="model-disclosure" href="./results.html" target="_blank" rel="noopener">AE1 · نتائج النموذج والفضاء الكامن · مؤشر المحادثة محاكاة؛ البيانات تقيس الاشتراك في وديعة</a>
+
+<!-- Boot -->
+<section id="boot" class="screen">
+  <div class="boot-mark">
+    <svg viewBox="0 0 64 64" class="logo-svg" aria-hidden="true">
+      <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e9e6ff"/><stop offset="1" stop-color="#8f87ff"/></linearGradient></defs>
+      <path d="M14 44 C 14 24, 26 14, 46 14" stroke="url(#lg)" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <path d="M24 50 C 24 34, 32 26, 50 26" stroke="url(#lg)" stroke-width="6" fill="none" stroke-linecap="round" opacity=".55"/>
+      <circle cx="46" cy="44" r="5" fill="#fff"/>
+    </svg>
+    <div class="boot-bar"><i></i></div>
+  </div>
+</section>
+
+<!-- Lock / login -->
+<section id="lock" class="screen hidden">
+  <div class="wall"></div>
+  <div class="lock-top">
+    <div class="lock-date" id="lockDate"></div>
+    <div class="lock-time" id="lockTime"></div>
+  </div>
+  <div class="lock-notifs" id="lockNotifs" aria-live="polite"></div>
+  <form class="lock-card glass" id="loginForm" autocomplete="off">
+    <div class="lock-avatar"><span>؟</span></div>
+    <div class="lock-org">بنك رصين · مركز الاحتفاظ بالعملاء</div>
+    <label class="sr" for="empName">اسمك</label>
+    <input id="empName" class="lock-input" placeholder="اكتب اسمك ثم Enter" maxlength="24" required>
+    <button class="lock-go" type="submit" aria-label="دخول">
+      <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </form>
+  <div class="lock-hint">سمّاعة أو مايك؟ المكالمات هنا بالصوت. تقدر تكتب بعد.</div>
+</section>
+
+<!-- Desktop -->
+<section id="desktop" class="screen hidden">
+  <div class="wall"></div>
+
+  <header class="menubar">
+    <div class="mb-right" id="mbMenus">
+      <button class="mb-menu mb-logo-btn" data-menu="logo" aria-label="قائمة رصين"><svg viewBox="0 0 64 64" class="mb-logo" aria-hidden="true"><path d="M14 44 C 14 24, 26 14, 46 14" stroke="currentColor" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="46" cy="44" r="6" fill="currentColor"/></svg></button>
+      <button class="mb-menu mb-app" data-menu="app" id="mbApp">الملفات</button>
+      <button class="mb-menu" data-menu="file">ملف</button>
+      <button class="mb-menu" data-menu="edit">تحرير</button>
+      <button class="mb-menu" data-menu="view">عرض</button>
+      <button class="mb-menu" data-menu="window">نافذة</button>
+      <button class="mb-menu" data-menu="help" id="mbHelp">مساعدة</button>
+    </div>
+    <div class="mb-left">
+      <button class="mb-nabd" id="mbNabd" title="نبض"><i class="dot"></i><span>نبض</span></button>
+      <button class="mb-icon hidden" id="mbDnd" title="عدم الإزعاج مفعّل"><svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 1010.5 10.5z" fill="currentColor"/></svg></button>
+      <button class="mb-icon mb-batt" id="mbBatt" title="البطارية"></button>
+      <button class="mb-icon" id="mbWifi" title="الشبكة"></button>
+      <button class="mb-icon" id="mbSearch" title="Spotlight"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+      <button class="mb-icon" id="mbCC" title="مركز التحكم"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="6" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="8" r="1.8" fill="currentColor"/><rect x="3" y="13" width="18" height="6" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="7" cy="16" r="1.8" fill="currentColor"/></svg></button>
+      <button class="mb-clock" id="mbClock" title="مركز الإشعارات"></button>
+    </div>
+  </header>
+
+  <div class="greeting" id="greeting">
+    <h1 id="greetHi"></h1>
+    <p id="greetSub">نبض جاهز. أول عميل بيوصلك بعد لحظات.</p>
+  </div>
+
+  <!-- Widgets -->
+  <aside class="widgets">
+    <div class="widget glass" id="wToday">
+      <div class="w-title">اليوم</div>
+      <div class="w-stats">
+        <div><b id="stCalls">٠</b><span>مكالمات</span></div>
+        <div><b id="stSaved">٠</b><span>احتفظت بهم</span></div>
+        <div><b id="stAvg">—</b><span>متوسط الخطر</span></div>
+      </div>
+    </div>
+    <div class="widget glass" id="wQueue">
+      <div class="w-title">قائمة الانتظار</div>
+      <div class="q-row"><i class="q-dot"></i><span id="qText">لا يوجد متصلون الآن</span></div>
+    </div>
+  </aside>
+
+  <div id="deskIcons"></div>
+  <div id="windows"><div id="snapGhost"></div><div id="mcLabels"></div></div>
+  <div id="notifs" aria-live="polite"></div>
+
+  <nav class="dock glass" id="dock">
+    <button class="dock-app" data-app="finder" title="الملفات"><span class="ic ic-finder"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 015.5 5H10l2 2h6.5A2.5 2.5 0 0121 9.5v8a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 17.5z" fill="currentColor"/></svg></span><em></em></button>
+    <button class="dock-app" data-app="launchpad" title="التطبيقات"><span class="ic ic-launch"><svg viewBox="0 0 24 24"><g fill="currentColor"><circle cx="6" cy="6" r="2.2"/><circle cx="12" cy="6" r="2.2"/><circle cx="18" cy="6" r="2.2"/><circle cx="6" cy="12" r="2.2"/><circle cx="12" cy="12" r="2.2"/><circle cx="18" cy="12" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="12" cy="18" r="2.2"/><circle cx="18" cy="18" r="2.2"/></g></svg></span><em></em></button>
+    <button class="dock-app" data-app="call" title="المكالمات"><span class="ic ic-call"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.4 15.4 0 006.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 013 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z" fill="currentColor"/></svg></span><em></em></button>
+    <button class="dock-app" data-app="crm" title="ملف العميل"><span class="ic ic-crm"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="10" r="3" fill="currentColor"/><path d="M7.5 17c.8-2 2.5-3 4.5-3s3.7 1 4.5 3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg></span><em></em></button>
+    <button class="dock-app" data-app="nabd" title="حاسوب نبض"><span class="ic ic-nabd"><i class="orb-mini"></i></span><em></em></button>
+    <button class="dock-app" data-app="mail" title="البريد"><span class="ic ic-mail"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><b class="badge" id="mailBadge">١</b><em></em></button>
+    <button class="dock-app" data-app="report" title="التقارير"><span class="ic ic-report"><svg viewBox="0 0 24 24"><path d="M5 19V9M10 19V5M15 19v-7M20 19v-4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span><em></em></button>
+    <button class="dock-app" data-app="notes" title="الملاحظات"><span class="ic ic-notes"><svg viewBox="0 0 24 24"><path d="M6 9.5h12M6 13h12M6 16.5h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><em></em></button>
+    <button class="dock-app" data-app="calc" title="الحاسبة"><span class="ic ic-calc"><svg viewBox="0 0 24 24"><g fill="currentColor"><rect x="5" y="5" width="14" height="4" rx="1.2" opacity=".55"/><circle cx="7" cy="13" r="1.5"/><circle cx="12" cy="13" r="1.5"/><circle cx="7" cy="17.5" r="1.5"/><circle cx="12" cy="17.5" r="1.5"/></g><circle cx="17" cy="13" r="1.6" fill="#ff9f0a"/><circle cx="17" cy="17.5" r="1.6" fill="#ff9f0a"/></svg></span><em></em></button>
+    <button class="dock-app" data-app="settings" title="إعدادات النظام"><span class="ic ic-settings"><svg viewBox="0 0 24 24"><path d="M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.8l1.6 2.3 2.7-.7.7 2.7 2.6 1-.6 2.7 1.9 2-1.9 2 .6 2.7-2.6 1-.7 2.7-2.7-.7L12 21.2l-1.6-2.3-2.7.7-.7-2.7-2.6-1 .6-2.7-1.9-2 1.9-2-.6-2.7 2.6-1 .7-2.7 2.7.7z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span><em></em></button>
+    <span class="dock-sep" id="dockMinSep"></span>
+    <button class="dock-app" data-app="trash" title="سلة المهملات" id="dockTrash"><span class="ic ic-trash"></span><em></em></button>
+  </nav>
+</section>
+<div id="dim"></div>
+
+<script type="module" src="./static/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AE1 — Learned Features</title><style>
+*{box-sizing:border-box}body{margin:0;background:#101324;color:#eef1ff;font:17px/1.65 system-ui,sans-serif}main{max-width:1100px;margin:auto;padding:44px 24px}a{color:#a9b9ff}h1{font-size:clamp(32px,5vw,58px);line-height:1.1}h2{margin-top:48px}p{max-width:850px}.tag{color:#9dacf4;letter-spacing:2px;font-size:14px}img{width:100%;height:auto;background:white;border-radius:14px;margin:15px 0}table{border-collapse:collapse;font-size:15px;min-width:750px}td,th{padding:12px;border-bottom:1px solid #38405a;text-align:left}.table-wrap{overflow:auto}.note{border-left:4px solid #ff9c6c;padding:12px 20px;background:#1e2339}.stats{display:flex;gap:32px;flex-wrap:wrap}.stats b{display:block;font-size:32px;color:#bac5ff}code{color:#b8c7ff}</style>
+<main><a href="./">مكتب رصين · Back to the desk</a><p class="tag">UNIT 6 · AE 1 · UCI BANK MARKETING</p>
+<h1>Learn the features.<br>Then learn the response.</h1>
+<p>Denoising autoencoder → frozen encoder + classifier → fine-tuning. A separate 2-unit encoder reveals the held-out customers in a true 2D latent space.</p>
+<p class="note">This is the second dataset under Customer Churn in the assignment. Its actual target is term-deposit subscription, not measured customer attrition. The desk's changing conversation score is an educational simulation. The class-weighted model scores are not calibrated probabilities.</p><div class="stats"><div><b>0.784</b>Test ROC-AUC</div><div><b>0.436</b>Test average precision</div><div><b>6,178</b>Held-out test rows</div></div><p>Selected using validation average precision: <strong>finetuned</strong>. Latent size 8, Gaussian noise 0.1. The threshold maximizes validation F1. Identical feature profiles stay in the same split; preprocessing is fitted on training rows only. <code>duration</code> is excluded.</p><h2>Frozen vs. fine-tuned</h2><div class="table-wrap"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>model</th>
+      <th>val_avg_precision</th>
+      <th>test_avg_precision</th>
+      <th>test_roc_auc</th>
+      <th>test_precision</th>
+      <th>test_recall</th>
+      <th>test_f1</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>frozen</td>
+      <td>0.4306</td>
+      <td>0.4054</td>
+      <td>0.7779</td>
+      <td>0.4592</td>
+      <td>0.4428</td>
+      <td>0.4508</td>
+    </tr>
+    <tr>
+      <td>finetuned</td>
+      <td>0.4762</td>
+      <td>0.4362</td>
+      <td>0.7836</td>
+      <td>0.4340</td>
+      <td>0.5126</td>
+      <td>0.4700</td>
+    </tr>
+  </tbody>
+</table></div><h2>Two latent units. No / yes colors.</h2><p>A separate unsupervised autoencoder, plotted on test rows only. Colors show the observed subscription outcome. Class overlap is expected: reconstruction does not optimize class separation.</p><img src="./static/artifacts/latent_space_2d.png" alt="True two-dimensional latent space, no customers in blue and yes in orange"><h2>Learning and evaluation</h2><img src="./static/artifacts/learning_curves.png" alt="Learning curves for denoising, frozen classification and fine-tuning"><img src="./static/artifacts/test_curves.png" alt="Held-out ROC and precision-recall curves"><img src="./static/artifacts/confusion_matrix.png" alt="Final held-out confusion matrix"><h2>What this demonstrates</h2><p>The encoder learns a compact representation without labels; the classifier then uses labels to separate yes from no. Fine-tuning adapts that representation. Validation chooses the configuration and threshold; test metrics are reported after those choices. The group-safe random split supports team comparison, but it does not measure future-time generalization.</p><p>The call simulator keeps the AE1 base score fixed for each customer. Dialogue changes only the labeled simulation layer. Names and call reasons are fictional; features come from public dataset rows.</p><p><a href="https://github.com/sara-alsalmi/customer-churn-prediction">Project repository</a> · <a href="https://archive.ics.uci.edu/dataset/222/bank+marketing">UCI source</a> — Moro, Rita &amp; Cortez (2014), CC BY 4.0.</p></main></html>
