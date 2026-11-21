@@ -13,7 +13,7 @@ data/bank-additional-full.csv
 tuner_logs/
 
 # Presentation sources (only the three built HTML files are committed)
-Churn_Story_Presentation/_source/
+Churn_Presentation/_source/
 
 # Local environments, secrets and reproducible site build
 .venv/
