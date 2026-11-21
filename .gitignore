@@ -14,3 +14,12 @@ tuner_logs/
 
 # Presentation sources (only the three built HTML files are committed)
 Churn_Story_Presentation/_source/
+
+# Local environments, secrets and reproducible site build
+.venv/
+.env
+deployment/churn-desk/dist/
+deployment/churn-desk/web/data/
+deployment/churn-desk/web/artifacts/
+.pytest_cache/
+core
