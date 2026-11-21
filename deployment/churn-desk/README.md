@@ -32,4 +32,6 @@ Optional live customer/voice services remain in the Python app. Copy `.env.examp
 
 Tests: `python -m pytest tests/test_ae1.py -q` and `node --test deployment/churn-desk/tests/inference.test.mjs` from the repository root.
 
-Hosted browser edition (owner-private): https://churn-desk-ae1.majedx10.chatgpt.site
+Public browser deployment (no account required): https://majed-codes.github.io/churn-desk-ae1/
+
+GitHub Pages deployment repository: https://github.com/Majed-Codes/churn-desk-ae1

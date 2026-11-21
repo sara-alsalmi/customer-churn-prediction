@@ -15,9 +15,9 @@ const rounded = (x, digits = 4) => Number(x.toFixed(digits));
 
 async function data() {
   if (!bundle) bundle = Promise.all([
-    fetch("/static/data/model.json").then((r) => { if (!r.ok) throw Error("Model unavailable"); return r.json(); }),
-    fetch("/static/data/customers.json").then((r) => r.json()),
-    fetch("/static/data/rules.json").then((r) => r.json()),
+    fetch(new URL("../data/model.json", import.meta.url)).then((r) => { if (!r.ok) throw Error("Model unavailable"); return r.json(); }),
+    fetch(new URL("../data/customers.json", import.meta.url)).then((r) => r.json()),
+    fetch(new URL("../data/rules.json", import.meta.url)).then((r) => r.json()),
   ]).then(([model, customers, rules]) => ({ model, customers, rules }));
   return bundle;
 }

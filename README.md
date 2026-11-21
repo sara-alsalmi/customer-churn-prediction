@@ -105,4 +105,6 @@ node --test deployment/churn-desk/tests/inference.test.mjs
 
 Data: [UCI Bank Marketing](https://archive.ics.uci.edu/dataset/222/bank+marketing), Moro, Rita & Cortez (2014), CC BY 4.0. The repo's existing preprocessing produces the cleaned version used here.
 
-Hosted browser edition (owner-private): https://churn-desk-ae1.majedx10.chatgpt.site
+Public browser deployment (no account required): https://majed-codes.github.io/churn-desk-ae1/
+
+GitHub Pages deployment repository: https://github.com/Majed-Codes/churn-desk-ae1
