@@ -83,7 +83,7 @@ Test yes prevalence (random AP) is about 0.109. Class-weighted scores are not ca
 
 Saved artifacts:
 
-- `weights/AE1_Learned_Features/model.keras`: selected classifier, with `preprocessor.joblib` and `meta.json`.
+- `weights/AE1_Learned_Features/model.keras` and `model.h5`: selected classifier, with `preprocessor.joblib` and `meta.json`.
 - `frozen.keras`, `finetuned.keras`, `denoising_autoencoder.keras`, `encoder_2d.keras`, `autoencoder_2d.keras`: reusable stage models.
 - `results/ae1/`: tuning, comparison, history, classification report, learning curves, ROC/PR, confusion matrix and test-row 2D coordinates.
 - `results/scores/ae1_*.npz`: scores checked against the shared row IDs.
@@ -104,3 +104,5 @@ node --test deployment/churn-desk/tests/inference.test.mjs
 ```
 
 Data: [UCI Bank Marketing](https://archive.ics.uci.edu/dataset/222/bank+marketing), Moro, Rita & Cortez (2014), CC BY 4.0. The repo's existing preprocessing produces the cleaned version used here.
+
+Hosted browser edition (owner-private): https://churn-desk-ae1.majedx10.chatgpt.site

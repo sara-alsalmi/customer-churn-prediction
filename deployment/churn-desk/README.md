@@ -31,3 +31,5 @@ docker run -p 7860:7860 churn-desk-ae1
 Optional live customer/voice services remain in the Python app. Copy `.env.example` into this directory as `.env`, then configure credentials and a currently supported customer model. Leave keys empty to use local replies and browser voice. Never commit `.env`. The published browser edition intentionally runs locally and needs no keys.
 
 Tests: `python -m pytest tests/test_ae1.py -q` and `node --test deployment/churn-desk/tests/inference.test.mjs` from the repository root.
+
+Hosted browser edition (owner-private): https://churn-desk-ae1.majedx10.chatgpt.site

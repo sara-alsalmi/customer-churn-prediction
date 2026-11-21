@@ -220,6 +220,7 @@ def run(epochs=50, trials=None):
     table.to_csv(RESULTS / "comparison.csv", index=False)
     chosen_metrics = next(r for r in rows if r["model"] == chosen_stage)
     selected.save(WEIGHTS / "model.keras")
+    selected.save(WEIGHTS / "model.h5")  # legacy format requested by the assignment
     # Restore pretrained encoder in the reconstruction model: fine-tuning shares its encoder.
     shared_encoder = best["autoencoder"].get_layer("encoder")
     finetuned_weights = shared_encoder.get_weights()
