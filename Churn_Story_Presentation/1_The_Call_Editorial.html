@@ -1,0 +1,2129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Call</title>
+<meta name="description" content="An interactive presentation of our deep learning project on the UCI Bank Marketing dataset: predicting which clients will subscribe to a term deposit.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   THE CALL — design system
+   Two surfaces: NIGHT (cinematic scenes) and PAPER (editorial / data scenes).
+   One signal colour: EMBER = a "yes". Everything else is ink and paper.
+   The stage is a fixed 1920×1080 canvas, scaled to fit the window.
+   ========================================================================== */
+
+:root {
+  /* surfaces */
+  --night: #0f0e0c;
+  --night-2: #1a1815;
+  --night-line: #2e2b26;
+  --paper: #f2ede3;
+  --paper-2: #e8e1d3;
+  --paper-line: #cfc6b4;
+
+  /* ink */
+  --ink: #1a1712;
+  --ink-2: #57503f;
+  --ink-3: #8a8270;
+  --moon: #f1ece2;          /* text on night */
+  --moon-2: #b8b0a0;
+  --moon-3: #77705f;
+
+  /* signal */
+  --ember: #e0622a;         /* "yes" on paper */
+  --ember-night: #f07a3e;   /* "yes" on night */
+  --ember-soft: #f6c9a8;
+  --no: #b5ac9a;            /* "no" on paper */
+  --no-night: #3b3731;      /* "no" on night */
+  --sim: #b3261e;           /* simulated warning */
+
+  /* type */
+  --serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --sans: "Inter Tight", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", Consolas, "SF Mono", monospace;
+
+  --ease: cubic-bezier(.2, .7, .2, 1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: #000; overflow: hidden; }
+body { font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+/* ---------- stage ---------- */
+#viewport { position: fixed; inset: 0; display: grid; place-items: center; background: #000; }
+#stage {
+  position: absolute; left: 50%; top: 50%;
+  width: 1920px; height: 1080px;
+  transform-origin: 0 0;
+  overflow: hidden;
+}
+
+.slide {
+  position: absolute; inset: 0;
+  opacity: 0; visibility: hidden;
+  transition: opacity .9s var(--ease), visibility 0s linear .9s;
+  overflow: hidden;
+}
+.slide.active { opacity: 1; visibility: visible; transition: opacity .9s var(--ease), visibility 0s; z-index: 2; }
+.slide .notes { display: none; }
+
+.night { background: var(--night); color: var(--moon); }
+.paper { background: var(--paper); color: var(--ink); }
+
+/* film grain on night scenes */
+.night::after {
+  content: ""; position: absolute; inset: -50%; pointer-events: none; z-index: 50;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.55'/></svg>");
+  opacity: .07; animation: grain 1.2s steps(6) infinite;
+}
+@keyframes grain {
+  0% { transform: translate(0, 0); } 20% { transform: translate(-3%, 2%); } 40% { transform: translate(2%, -3%); }
+  60% { transform: translate(-2%, -1%); } 80% { transform: translate(3%, 3%); } 100% { transform: translate(0, 0); }
+}
+/* paper fibre */
+.paper::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 50;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.6' numOctaves='3'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .25  0 0 0 0 .2  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
+  opacity: .10; mix-blend-mode: multiply;
+}
+
+/* letterbox for cinematic scenes */
+.letterbox::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 40;
+  border-top: 96px solid #000; border-bottom: 96px solid #000;
+}
+
+/* ---------- scene slate (top-left label on every scene) ---------- */
+.slate {
+  position: absolute; top: 64px; left: 96px; z-index: 45;
+  font: 500 17px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase;
+  display: flex; gap: 18px; align-items: center;
+}
+.slate b { font-weight: 500; }
+.night .slate { color: var(--moon-3); }
+.paper .slate { color: var(--ink-3); }
+.slate .dash { width: 40px; height: 1px; background: currentColor; }
+.letterbox .slate { top: 132px; }
+
+/* ---------- type ---------- */
+.display { font-family: var(--serif); font-weight: 400; letter-spacing: -.01em; line-height: .95; }
+.italic { font-style: italic; }
+.kicker { font: 500 18px/1.3 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+.lede { font-size: 34px; line-height: 1.38; }
+.body { font-size: 26px; line-height: 1.5; }
+.mono { font-family: var(--mono); }
+.muted { color: var(--ink-2); }
+.night .muted { color: var(--moon-2); }
+.ember { color: var(--ember); }
+.night .ember { color: var(--ember-night); }
+
+/* ---------- fragments ---------- */
+.f { opacity: 0; transform: translateY(18px); transition: opacity .8s var(--ease), transform .8s var(--ease); }
+.f.on { opacity: 1; transform: none; }
+.f.fade { transform: none; }
+/* sequences where each new line replaces the previous one */
+.seq { position: relative; }
+.seq > .f { position: absolute; left: 0; right: 0; }
+.seq > .f.on:not(.current) { opacity: 0; transform: translateY(-14px); }
+
+/* ---------- chrome: progress, controls, overlays ---------- */
+#chrome { position: fixed; inset: 0; pointer-events: none; z-index: 100; }
+#progress {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 22px;
+  display: flex; gap: 3px; padding: 0 3px 6px; pointer-events: auto; align-items: flex-end;
+}
+#progress button {
+  flex: 1; height: 4px; background: rgba(255, 255, 255, .16); border-radius: 2px;
+  transition: height .2s, background .3s;
+}
+body.on-paper #progress button { background: rgba(26, 23, 18, .14); }
+#progress button.done { background: rgba(240, 122, 62, .55); }
+#progress button.current { background: var(--ember-night); }
+#progress button:hover { height: 9px; }
+
+#controls {
+  position: absolute; right: 18px; bottom: 30px; display: flex; gap: 6px; pointer-events: auto;
+  opacity: .35; transition: opacity .3s;
+}
+#controls:hover { opacity: 1; }
+#controls button {
+  font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  padding: 9px 11px; border-radius: 4px; background: rgba(20, 18, 15, .78); color: #eee6d6;
+  border: 1px solid rgba(255, 255, 255, .12);
+}
+#controls button[aria-pressed="true"] { color: var(--ember-night); border-color: var(--ember-night); }
+
+#counter {
+  position: absolute; left: 18px; bottom: 32px; font: 500 12px/1 var(--mono); letter-spacing: .14em;
+  color: rgba(238, 230, 214, .55); pointer-events: none;
+}
+body.on-paper #counter { color: rgba(26, 23, 18, .5); }
+
+/* notes panel */
+#notes {
+  position: absolute; left: 50%; bottom: 40px; transform: translate(-50%, 20px);
+  width: min(1100px, calc(100vw - 32px)); max-height: 38vh; overflow: auto;
+  background: rgba(15, 14, 12, .94); color: #eee6d6; border: 1px solid #3a352d; border-radius: 10px;
+  padding: 22px 26px; font: 17px/1.55 var(--sans); pointer-events: auto;
+  opacity: 0; visibility: hidden; transition: .3s var(--ease);
+}
+#notes.open { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+#notes h4 { font: 500 12px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ember-night); margin-bottom: 12px; }
+#notes p { margin-bottom: 10px; }
+
+/* overview / scene navigation */
+#overview {
+  position: absolute; inset: 0; background: rgba(10, 9, 8, .96); pointer-events: auto;
+  display: grid; place-items: center; opacity: 0; visibility: hidden; transition: .35s var(--ease);
+}
+#overview.open { opacity: 1; visibility: visible; }
+#overview .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 260px)); gap: 14px; padding: 16px; }
+#overview .scene {
+  text-align: left; padding: 22px 20px 26px; border: 1px solid #36312a; border-radius: 6px; color: #eee6d6;
+  background: #15130f; transition: border-color .2s, transform .2s;
+}
+#overview .scene:hover, #overview .scene.current { border-color: var(--ember-night); transform: translateY(-2px); }
+#overview .scene small { display: block; font: 500 12px/1 var(--mono); letter-spacing: .16em; color: var(--ember-night); margin-bottom: 14px; }
+#overview .scene span { font: 30px/1.05 var(--serif); }
+#overview .hint { grid-column: 1 / -1; color: #8a8270; font: 13px/1.6 var(--mono); margin-top: 10px; }
+@media (max-width: 760px) { #overview .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } #overview .scene span { font-size: 22px; } }
+
+/* tooltip (inside the stage, so it scales with it) */
+#tip {
+  position: absolute; z-index: 90; pointer-events: none; padding: 12px 16px; border-radius: 6px;
+  background: #16140f; color: #f1ece2; font: 18px/1.4 var(--sans); box-shadow: 0 8px 30px rgba(0, 0, 0, .25);
+  opacity: 0; transition: opacity .12s; white-space: nowrap;
+}
+#tip b { font-family: var(--mono); font-weight: 500; color: var(--ember-night); }
+#tip.show { opacity: 1; }
+
+/* simulated / awaiting stamps */
+.sim-stamp {
+  display: inline-flex; align-items: center; gap: 12px;
+  font: 600 16px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase;
+  color: var(--sim); border: 2px solid var(--sim); padding: 10px 14px; border-radius: 3px;
+}
+.sim-stamp::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--sim); animation: blink 1.6s infinite; }
+@keyframes blink { 50% { opacity: .2; } }
+.night .sim-stamp { color: #ff8a80; border-color: #ff8a80; }
+.night .sim-stamp::before { background: #ff8a80; }
+.awaiting {
+  display: grid; place-items: center; text-align: center;
+  border: 2px dashed var(--paper-line); border-radius: 6px; color: var(--ink-3);
+  font: 600 18px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+  background: repeating-linear-gradient(-45deg, transparent 0 14px, rgba(26, 23, 18, .035) 14px 28px);
+}
+.night .awaiting { border-color: var(--night-line); color: var(--moon-3); background: repeating-linear-gradient(-45deg, transparent 0 14px, rgba(255, 255, 255, .03) 14px 28px); }
+
+/* ======================================================================
+   SCENES
+   ====================================================================== */
+
+/* 01 / 12 — the call */
+.call-scene { position: absolute; inset: 0; }
+.rings { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.rings i {
+  position: absolute; left: -9px; top: -9px; width: 18px; height: 18px; border-radius: 50%;
+  border: 1.5px solid var(--ember-night); opacity: 0;
+}
+.rings .core { background: var(--ember-night); border: 0; opacity: 0; transition: opacity 1.2s; box-shadow: 0 0 40px 6px rgba(240, 122, 62, .45); }
+.ringing .rings .core { opacity: 1; }
+.ringing .rings i:not(.core) { animation: ring 3.2s var(--ease) infinite; }
+.ringing .rings i:nth-child(2) { animation-delay: .25s !important; }
+.ringing .rings i:nth-child(3) { animation-delay: .5s !important; }
+.ringing .rings i:nth-child(4) { animation-delay: 1.6s !important; }
+.ringing .rings i:nth-child(5) { animation-delay: 1.85s !important; }
+@keyframes ring { 0% { transform: scale(1); opacity: .9; } 70% { opacity: 0; } 100% { transform: scale(26); opacity: 0; } }
+.hushed .rings i:not(.core) { animation-play-state: paused; opacity: 0 !important; transition: opacity .6s; }
+.hushed .rings .core { box-shadow: 0 0 18px 2px rgba(240, 122, 62, .25); }
+
+.story-place { position: absolute; left: 0; right: 0; top: 240px; text-align: center; color: var(--moon-3); }
+.story-lines { position: absolute; left: 260px; right: 260px; top: 640px; height: 220px; text-align: center; }
+.story-lines .f { font-family: var(--serif); font-size: 66px; line-height: 1.12; }
+.story-lines .f.small { font-size: 52px; }
+.story-lines .f q { font-style: italic; quotes: "“" "”"; color: var(--moon); }
+.story-caption { position: absolute; left: 0; right: 0; bottom: 124px; text-align: center; font: 15px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--moon-3); z-index: 45; }
+
+.next-stack { position: absolute; right: 170px; top: 330px; text-align: right; font-family: var(--serif); font-style: italic; color: var(--moon-2); }
+.next-stack .f { font-size: 40px; line-height: 1.6; }
+.next-stack .f:nth-child(2) { opacity: .7; } .next-stack .f:nth-child(2):not(.on) { opacity: 0; }
+.next-stack .f:nth-child(3).on { opacity: .45; }
+
+/* 02 — the wall */
+#wall { position: absolute; left: 96px; top: 350px; }
+.wall-text { position: absolute; left: 96px; top: 130px; width: 1150px; }
+.wall-text .seq { height: 150px; }
+.wall-text .f { font-family: var(--serif); font-size: 64px; line-height: 1.05; }
+.wall-legend { position: absolute; left: 96px; bottom: 64px; display: flex; gap: 40px; font: 18px/1 var(--mono); letter-spacing: .08em; color: var(--moon-2); }
+.wall-legend span { display: inline-flex; align-items: center; gap: 10px; }
+.wall-legend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+.wall-big { position: absolute; right: 104px; top: 110px; text-align: right; }
+.wall-big .n { font: 150px/0.9 var(--serif); color: var(--moon); }
+.wall-big .l { font: 17px/1.5 var(--mono); color: var(--moon-2); letter-spacing: .1em; text-transform: uppercase; margin-top: 8px; }
+
+/* 03 — the question */
+.question { position: absolute; left: 160px; right: 160px; top: 300px; }
+.question h2 { font-size: 150px; }
+.question h2 .f { display: inline; }
+.question .after { margin-top: 70px; font-size: 38px; color: var(--moon-2); }
+.signal-line { position: absolute; left: 0; right: 0; top: 860px; height: 120px; }
+.signal-line path { fill: none; stroke: var(--ember-night); stroke-width: 2; }
+.signal-line .tick { stroke: var(--moon-3); stroke-width: 1.5; }
+
+/* 04 — the reveal */
+.reveal-title { position: absolute; left: 96px; top: 170px; font-size: 330px; line-height: .8; letter-spacing: -.035em; }
+.reveal-title em { color: var(--ember); }
+.reveal-def { position: absolute; left: 100px; top: 520px; width: 820px; }
+.reveal-def .pos { font: italic 30px/1 var(--serif); color: var(--ink-3); margin-bottom: 22px; }
+.reveal-def p { font-size: 40px; line-height: 1.28; font-family: var(--serif); }
+.reveal-def .bridge { margin-top: 36px; font: 22px/1.5 var(--sans); color: var(--ink-2); border-left: 3px solid var(--ember); padding-left: 20px; }
+.facts { position: absolute; right: 96px; top: 170px; width: 700px; border-top: 2px solid var(--ink); }
+.facts div { display: grid; grid-template-columns: 210px 1fr; gap: 20px; padding: 20px 0; border-bottom: 1px solid var(--paper-line); }
+.facts dt { font: 500 15px/1.6 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.facts dd { font-size: 25px; line-height: 1.35; }
+.facts dd small { display: block; font-size: 18px; color: var(--ink-2); margin-top: 4px; }
+
+/* 05 — inside the data */
+.data-head { position: absolute; left: 96px; top: 130px; font-size: 96px; width: 1300px; }
+.waffle-wrap { position: absolute; left: 96px; top: 340px; width: 520px; }
+.waffle { display: grid; grid-template-columns: repeat(10, 1fr); gap: 7px; width: 340px; }
+.waffle i { aspect-ratio: 1; border-radius: 50%; background: var(--no); transform: scale(0); transition: transform .5s var(--ease), background .5s; }
+.waffle.show i { transform: scale(1); }
+.waffle i.yes { background: var(--ember); }
+.hero-n { font: 130px/0.9 var(--serif); margin-top: 30px; }
+.hero-n span { color: var(--ember); }
+.hero-l { font-size: 22px; line-height: 1.45; color: var(--ink-2); width: 460px; margin-top: 10px; }
+
+.anatomy { position: absolute; left: 700px; top: 340px; width: 560px; }
+.anatomy h3, .quality h3 { font: 500 15px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); padding-bottom: 14px; border-bottom: 2px solid var(--ink); margin-bottom: 8px; }
+.group { padding: 16px 0 18px; border-bottom: 1px solid var(--paper-line); }
+.group .g-head { display: flex; justify-content: space-between; align-items: baseline; }
+.group .g-name { font: 36px/1 var(--serif); }
+.group .g-count { font: 500 18px/1 var(--mono); color: var(--ink-3); }
+.group .g-cols { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px 8px; }
+.group .g-cols span { font: 15px/1 var(--mono); padding: 6px 8px; border-radius: 3px; background: var(--paper-2); color: var(--ink-2); }
+.group .g-cols span.cut { text-decoration: line-through; color: var(--ember); background: transparent; border: 1px dashed var(--ember); }
+
+.quality { position: absolute; right: 96px; top: 340px; width: 520px; }
+.q-row { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 0; border-bottom: 1px solid var(--paper-line); font-size: 22px; }
+.q-row b { font: 500 26px/1 var(--mono); }
+.unk { margin-top: 22px; }
+.unk .u-title { font-size: 19px; color: var(--ink-2); margin-bottom: 14px; }
+.unk-row { display: grid; grid-template-columns: 110px 1fr 70px; align-items: center; gap: 12px; height: 34px; cursor: default; }
+.unk-row .c { font: 16px/1 var(--mono); color: var(--ink-2); }
+.unk-row .bar { height: 14px; background: var(--ink); border-radius: 0 4px 4px 0; width: 0; transition: width 1s var(--ease); }
+.unk-row .v { font: 16px/1 var(--mono); text-align: right; }
+
+/* 06 — finding the signal */
+.signal-list { position: absolute; left: 96px; top: 150px; width: 560px; }
+.signal-list .s-title { font-size: 84px; margin-bottom: 30px; }
+.sig {
+  display: block; width: 100%; text-align: left; padding: 18px 0 18px 26px; border-left: 3px solid var(--paper-line);
+  transition: border-color .25s, background .25s;
+}
+.sig small { display: block; font: 500 14px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px; }
+.sig span { font: 28px/1.18 var(--serif); color: var(--ink-2); }
+.sig:hover span { color: var(--ink); }
+.sig.on { border-left-color: var(--ember); background: linear-gradient(90deg, rgba(224, 98, 42, .07), transparent 70%); }
+.sig.on span { color: var(--ink); }
+
+.signal-panel { position: absolute; left: 760px; right: 96px; top: 150px; bottom: 80px; }
+.signal-panel .p-head { font: 84px/0.95 var(--serif); min-height: 180px; }
+.signal-panel .p-head em { color: var(--ember); font-style: normal; }
+.signal-panel .p-sub { font-size: 22px; color: var(--ink-2); margin-top: 14px; min-height: 66px; line-height: 1.45; width: 900px; }
+#signal-chart { position: absolute; left: 0; right: 0; bottom: 0; height: 560px; }
+#signal-chart text { font-family: var(--mono); }
+
+/* 07 — the data journey */
+.journey-head { position: absolute; left: 96px; top: 130px; font-size: 96px; }
+.journey-sub { position: absolute; left: 100px; top: 250px; font-size: 26px; color: var(--moon-2); }
+.track { position: absolute; left: 96px; right: 96px; top: 400px; height: 220px; }
+.track .rail { position: absolute; left: 31px; right: calc(100% / 9 - 31px); top: 30px; height: 2px; background: var(--night-line); }
+.track .rail i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ember-night); width: 0; transition: width 1.6s var(--ease); }
+.stations { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(9, 1fr); }
+.station { position: relative; text-align: left; padding-top: 74px; padding-right: 14px; display: flex; flex-direction: column; justify-content: flex-start; align-self: stretch; }
+.station::before {
+  content: ""; position: absolute; left: 20px; top: 20px; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--night); border: 2px solid var(--moon-3); transition: .25s var(--ease);
+}
+.station.cut::before { border-style: dashed; border-color: var(--ember-night); }
+.station:hover::before { border-color: var(--moon); }
+.station.on::before { background: var(--ember-night); border-color: var(--ember-night); box-shadow: 0 0 0 8px rgba(240, 122, 62, .18); }
+.station small { display: block; font: 500 14px/1 var(--mono); letter-spacing: .14em; color: var(--moon-3); margin-bottom: 10px; }
+.station span { font: 27px/1.1 var(--serif); color: var(--moon-2); display: block; }
+.station.on span { color: var(--moon); }
+.station em { display: block; margin-top: 8px; font: 15px/1.3 var(--mono); font-style: normal; color: var(--ember-night); }
+.drawer {
+  position: absolute; left: 96px; right: 96px; top: 680px; height: 290px;
+  border-top: 1px solid var(--night-line); padding-top: 40px; display: grid; grid-template-columns: 560px 1fr; gap: 80px;
+}
+.drawer .d-title { font: 60px/1 var(--serif); }
+.drawer .d-tag { font: 500 15px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ember-night); margin-bottom: 18px; }
+.drawer .d-body { font-size: 26px; line-height: 1.5; color: var(--moon-2); }
+.drawer .d-body b { color: var(--moon); font-weight: 500; }
+.drawer .d-body .mono { font-size: 22px; }
+
+/* 08 — teaching the model */
+.lab-head { position: absolute; left: 96px; top: 130px; font-size: 96px; }
+.shared { position: absolute; left: 100px; top: 260px; display: flex; gap: 10px; flex-wrap: wrap; width: 1700px; }
+.shared span { font: 16px/1 var(--mono); letter-spacing: .06em; padding: 10px 14px; border: 1px solid var(--night-line); border-radius: 30px; color: var(--moon-2); }
+.lineup { position: absolute; left: 96px; top: 360px; width: 760px; }
+.lineup .fam { font: 500 14px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--moon-3); margin: 18px 0 8px; }
+.model-btn {
+  display: grid; grid-template-columns: 120px 1fr auto; align-items: center; gap: 18px; width: 100%;
+  padding: 16px 18px; border-radius: 6px; text-align: left; border: 1px solid transparent; transition: .25s var(--ease);
+}
+.model-btn:hover { background: var(--night-2); }
+.model-btn.on { background: var(--night-2); border-color: var(--night-line); }
+.model-btn .glyph { height: 56px; }
+.model-btn .m-name { font: 500 15px/1 var(--mono); letter-spacing: .14em; color: var(--moon-3); display: block; margin-bottom: 6px; }
+.model-btn .m-title { font: 34px/1 var(--serif); }
+.model-btn .m-status { font: 13px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; padding: 7px 10px; border-radius: 3px; border: 1px solid var(--night-line); color: var(--moon-2); white-space: nowrap; }
+.model-btn .m-status.go { color: var(--ember-night); border-color: rgba(240, 122, 62, .5); }
+.model-card { position: absolute; left: 960px; right: 96px; top: 360px; bottom: 90px; border-left: 1px solid var(--night-line); padding-left: 64px; }
+.model-card .c-name { font: 500 16px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ember-night); }
+.model-card .c-title { font: 76px/1 var(--serif); margin: 16px 0 20px; }
+.model-card .c-idea { font-size: 26px; line-height: 1.5; color: var(--moon-2); margin-bottom: 30px; max-width: 820px; }
+.model-card dl { display: grid; grid-template-columns: 240px 1fr; border-top: 1px solid var(--night-line); }
+.model-card dt, .model-card dd { padding: 13px 0; border-bottom: 1px solid var(--night-line); font-size: 21px; }
+.model-card dt { font: 500 14px/1.9 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--moon-3); }
+.model-card .c-out { margin-top: 24px; font-size: 20px; color: var(--moon-2); }
+.model-card .c-out b { color: var(--moon); font-weight: 500; }
+
+/* 09 — results lab */
+.res-head { position: absolute; left: 96px; top: 130px; font-size: 96px; }
+.res-stamp { position: absolute; right: 96px; top: 150px; text-align: right; }
+.res-stamp p { font: 15px/1.5 var(--mono); color: var(--sim); margin-top: 10px; max-width: 520px; }
+.metric-tabs { position: absolute; left: 96px; top: 280px; display: flex; gap: 6px; }
+.metric-tabs button { font: 500 16px/1 var(--mono); letter-spacing: .08em; padding: 12px 16px; border-radius: 4px; border: 1px solid var(--paper-line); color: var(--ink-2); }
+.metric-tabs button:hover { border-color: var(--ink-3); }
+.metric-tabs button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.metric-explain { position: absolute; left: 96px; top: 350px; width: 1000px; font-size: 21px; color: var(--ink-2); line-height: 1.45; }
+#res-chart { position: absolute; left: 96px; top: 420px; width: 1040px; height: 470px; }
+#res-chart text { font-family: var(--mono); }
+.cm-wrap { position: absolute; left: 1240px; right: 96px; top: 280px; }
+.cm-wrap h3 { font: 500 15px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
+.cm-wrap .cm-model { font: 46px/1 var(--serif); margin: 12px 0 26px; }
+.cm { display: grid; grid-template-columns: 110px 1fr 1fr; grid-template-rows: 40px 170px 170px; gap: 4px; }
+.cm .ax { font: 14px/1.2 var(--mono); color: var(--ink-3); letter-spacing: .06em; display: flex; align-items: center; justify-content: center; text-align: center; }
+.cm .cell { border-radius: 4px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; background: var(--paper-2); }
+.cm .cell b { font: 500 46px/1 var(--mono); }
+.cm .cell span { font-size: 17px; line-height: 1.3; color: var(--ink-2); }
+.cm .cell.tp { background: var(--ember); color: #fff; } .cm .cell.tp span { color: #fff3ea; }
+.cm .cell.fn { background: var(--ember-soft); }
+.cm .cell.fp { background: #ddd5c4; }
+.final-pick { position: absolute; left: 1240px; right: 96px; bottom: 80px; border-top: 2px solid var(--ink); padding-top: 20px; }
+.final-pick small { font: 500 14px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
+.final-pick .fp-name { font: 52px/1 var(--serif); margin: 10px 0 8px; }
+.final-pick .fp-name em { color: var(--ember); font-style: normal; }
+.final-pick p { font-size: 19px; color: var(--ink-2); line-height: 1.4; }
+.base-note { position: absolute; left: 96px; bottom: 80px; width: 1040px; font: 15px/1.5 var(--mono); color: var(--ink-3); }
+
+/* 10 — what it means */
+.means-head { position: absolute; left: 96px; top: 130px; font-size: 96px; width: 1700px; }
+.queues { position: absolute; left: 96px; top: 330px; width: 1060px; }
+.queue { margin-bottom: 46px; }
+.queue .q-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.queue .q-label span { font: 30px/1 var(--serif); }
+.queue .q-label small { font: 15px/1 var(--mono); color: var(--ink-3); letter-spacing: .1em; text-transform: uppercase; }
+.queue .people { display: grid; grid-template-columns: repeat(50, 1fr); gap: 4px; }
+.queue .people i { height: 34px; border-radius: 10px 10px 2px 2px; background: var(--no); opacity: 0; transform: translateY(10px); transition: .5s var(--ease); }
+.queue.show .people i { opacity: 1; transform: none; }
+.queue .people i.yes { background: var(--ember); }
+.queue .first { margin-top: 10px; height: 2px; background: var(--ink); position: relative; }
+.queue-note { margin-top: 10px; font: italic 34px/1.3 var(--serif); color: var(--ink-2); width: 900px; }
+.queue-note b { font-style: normal; font-weight: 400; color: var(--ember); }
+.queue .first::after { content: "first 20% of calls"; position: absolute; left: 0; top: 8px; font: 14px/1 var(--mono); color: var(--ink-3); }
+.means-claims { position: absolute; right: 96px; top: 330px; width: 600px; }
+.claim { padding: 22px 0; border-top: 1px solid var(--paper-line); }
+.claim:first-child { border-top: 2px solid var(--ink); }
+.claim h4 { font: 36px/1.05 var(--serif); font-weight: 400; margin-bottom: 8px; }
+.claim p { font-size: 21px; line-height: 1.45; color: var(--ink-2); }
+
+/* 11 — the demo */
+.demo-head { position: absolute; left: 96px; top: 130px; font-size: 120px; }
+.demo-sub { position: absolute; left: 100px; top: 280px; font-size: 26px; color: var(--moon-2); width: 1100px; line-height: 1.45; }
+.strip { position: absolute; left: 96px; right: 96px; top: 420px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 22px; }
+.frame { border: 1px solid var(--night-line); border-radius: 6px; padding: 22px; height: 440px; display: flex; flex-direction: column; background: linear-gradient(180deg, var(--night-2), var(--night)); }
+.frame small { font: 500 14px/1 var(--mono); letter-spacing: .16em; color: var(--ember-night); }
+.frame h4 { font: 36px/1 var(--serif); font-weight: 400; margin: 12px 0 18px; }
+.frame .sketch { flex: 1; border-radius: 4px; border: 1px dashed var(--night-line); padding: 16px; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+.frame .sketch .fld { height: 20px; border-radius: 3px; background: var(--night-line); }
+.frame .sketch .fld.s { width: 60%; }
+.frame p { font-size: 18px; line-height: 1.4; color: var(--moon-2); margin-top: 16px; min-height: 76px; }
+.frame .tag { margin-top: 10px; font: 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--moon-3); }
+.demo-slot { position: absolute; left: 96px; right: 96px; bottom: 80px; height: 90px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }
+.demo-slot a { font: 500 18px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--night); background: var(--ember-night); padding: 16px 22px; border-radius: 4px; text-decoration: none; }
+
+/* 12 — final */
+.final-lines { position: absolute; left: 200px; right: 200px; top: 610px; height: 260px; text-align: center; }
+.final-lines .f { font: 64px/1.12 var(--serif); }
+.final-card { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; background: var(--night); z-index: 30; }
+.final-card .t { font: italic 240px/0.85 var(--serif); letter-spacing: -.03em; }
+.final-card .t em { color: var(--ember-night); }
+.final-card .tag { font: 44px/1.2 var(--serif); margin-top: 36px; color: var(--moon); }
+.final-card .tag2 { font: 44px/1.2 var(--serif); color: var(--moon-2); }
+.final-card .team { margin-top: 70px; font: 500 17px/1.8 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--moon-3); }
+.final-card .thanks { margin-top: 26px; font: italic 40px/1 var(--serif); color: var(--ember-night); }
+
+/* chart helpers */
+.grid-line { stroke: var(--paper-line); stroke-width: 1; }
+.axis-label { fill: var(--ink-3); font-size: 16px; }
+.val-label { fill: var(--ink); font-size: 18px; font-weight: 500; }
+.ref-line { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 6 6; }
+.ref-label { fill: var(--ink); font-size: 16px; }
+.bar { transition: y .7s var(--ease), height .7s var(--ease), width .7s var(--ease), x .7s var(--ease), fill .3s; }
+.hit { fill: transparent; cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+  .f, .slide, .bar, .waffle i, .queue .people i { transition: none !important; }
+  .night::after { animation: none; }
+  .ringing .rings i:not(.core) { animation: none; }
+}
+
+</style>
+</head>
+<body>
+
+<div id="viewport">
+<div id="stage">
+
+<!-- ===================================================================
+     01 — THE STORY
+     =================================================================== -->
+<section class="slide night letterbox" data-scene="01" data-title="The Story">
+  <div class="slate"><b>Sc. 01</b><span class="dash"></span>The Story</div>
+  <div class="story-place kicker f fade" data-t="600">Lisbon · May 2008 · 20:41</div>
+  <div class="rings"><i class="core"></i><i></i><i></i><i></i><i></i></div>
+  <span class="f" data-t="1200" data-action="ring" hidden></span>
+  <div class="story-lines seq">
+    <div class="f" data-t="1800">A phone rings.</div>
+    <div class="f small" data-t="5200">Ana is making dinner. She answers on the fourth ring.</div>
+    <div class="f small" data-t="9000"><q>Good evening, I’m calling from your bank. Have you heard about our term deposit?</q></div>
+    <div class="f" data-t="13800" data-action="hush">She says no. Politely.</div>
+    <div class="f small" data-t="17000">The agent marks the call, and dials the next number.</div>
+  </div>
+  <div class="next-stack">
+    <div class="f fade" data-t="19400">And the next.</div>
+    <div class="f fade" data-t="20600">And the next.</div>
+    <div class="f fade" data-t="21800">And the next.</div>
+  </div>
+  <div class="story-caption f fade" data-t="600">An illustrative story · Ana is not a real client</div>
+  <aside class="notes">
+    <p>Let the scene play. Don't talk over the first line. The scene runs by itself (about 22 seconds). Press → to skip ahead.</p>
+    <p>"This is Ana. She's not a real person, but she could be any of thousands of people on a bank's call list."</p>
+    <p>Pause after "She says no." Let "And the next" land before moving on.</p>
+  </aside>
+</section>
+
+<!-- ===================================================================
+     02 — THE HIDDEN PROBLEM
+     =================================================================== -->
+<section class="slide night" data-scene="02" data-title="The Hidden Problem">
+  <div class="slate"><b>Sc. 02</b><span class="dash"></span>The Hidden Problem</div>
+  <div class="wall-text">
+    <div class="seq">
+      <div class="f" data-t="300">Between 2008 and 2010, a Portuguese bank made that call <span class="ember" data-eda="cleanRows"></span> times.</div>
+      <div class="f" data-action="yes"><span class="ember" data-eda="yes"></span> said yes. Everyone else said no.</div>
+    </div>
+  </div>
+  <canvas id="wall" aria-label="One dot per client contact: 41,176 dots, 4,639 of them marked as yes"></canvas>
+  <div class="wall-legend">
+    <span><i style="background:#4a453d"></i>1 dot = 1 client contact</span>
+    <span><i style="background:#f07a3e"></i>said yes</span>
+  </div>
+  <div class="wall-big f">
+    <div class="n" data-eda="noPct"></div>
+    <div class="l">of the calls ended in “no”.<br>Each one took an agent’s time.</div>
+  </div>
+  <aside class="notes">
+    <p>Each dot is one client contact in our dataset: <span data-eda="cleanRows"></span> of them.</p>
+    <p>→ The dots that said yes light up: <span data-eda="yes"></span>, only about 11%.</p>
+    <p>→ "Almost 9 out of 10 calls ended in no. That's the hidden cost: the time spent on calls that were never going to work."</p>
+  </aside>
+</section>
+
+<!-- ===================================================================
+     03 — THE QUESTION
+     =================================================================== -->
+<section class="slide night" data-scene="03" data-title="The Question">
+  <div class="slate"><b>Sc. 03</b><span class="dash"></span>The Question</div>
+  <div class="question">
+    <h2 class="display"><span class="f">What if we knew who would say <span class="italic ember">yes</span>,</span> <span class="f italic">before we dialed?</span></h2>
+    <p class="after f">That is the opportunity behind predictive analytics.</p>
+  </div>
+  <svg id="signal-line" class="signal-line" viewBox="0 0 1920 120" preserveAspectRatio="none" aria-hidden="true"></svg>
+  <aside class="notes">
+    <p>The ringing line turns into a measuring axis: the story becomes data.</p>
+    <p>"What if we knew who would say yes, before we dialed?" Pause. "That is what this project is about."</p>
+  </aside>
+</section>
+
+<!-- ===================================================================
+     04 — THE PROJECT REVEAL
+     =================================================================== -->
+<section class="slide paper" data-scene="04" data-title="The Project">
+  <div class="slate"><b>Sc. 04</b><span class="dash"></span>The Project</div>
+  <h1 class="reveal-title display">The <em class="italic">Call</em></h1>
+  <div class="reveal-def">
+    <div class="pos">noun · a deep learning project</div>
+    <p>Predicting which bank clients will <span class="ember">subscribe to a term deposit</span>, using what the bank knows <em>before</em> it calls.</p>
+    <div class="bridge f">Our brief says “customer churn”. Our data asks the mirror question: not <em>who will leave</em>, but <em>who will commit</em>.</div>
+  </div>
+  <dl class="facts">
+    <div class="f"><dt>Data</dt><dd>UCI Bank Marketing<small>bank-additional-full.csv · Moro, Cortez &amp; Rita (2014)</small></dd></div>
+    <div class="f"><dt>Source</dt><dd>Phone campaigns of a Portuguese bank<small>May 2008 – November 2010</small></dd></div>
+    <div class="f"><dt>Size</dt><dd><span data-eda="rawRows"></span> rows · <span data-eda="features"></span> features + target<small>after cleaning: <span data-eda="cleanRows"></span> rows</small></dd></div>
+    <div class="f"><dt>Target</dt><dd><span class="mono">y</span> = did the client subscribe?<small>binary classification · <span data-eda="overall"></span> yes</small></dd></div>
+    <div class="f"><dt>Models</dt><dd>3 neural networks · 2 autoencoders<small>Unit 6 · Deep Learning</small></dd></div>
+  </dl>
+  <aside class="notes">
+    <p>Introduce the project: the UCI Bank Marketing dataset, real phone campaigns of a Portuguese bank, 2008–2010.</p>
+    <p>Address the title honestly: the brief is customer churn; this dataset is about subscription. "Churn asks who will leave; we ask who will commit." It's the same kind of problem: predict a customer decision from data, with a rare positive class.</p>
+    <p>Our target is <code>y</code>: did the client subscribe to a term deposit?</p>
+  </aside>
+</section>
+
+<!-- ===================================================================
+     05 — INSIDE THE DATA
+     =================================================================== -->
+<section class="slide paper" data-scene="05" data-title="Inside the Data">
+  <div class="slate"><b>Sc. 05</b><span class="dash"></span>Inside the Data</div>
+  <h2 class="data-head display">Only one call in nine ends in <span class="italic ember">yes</span>.</h2>
+
+  <div class="waffle-wrap">
+    <div class="waffle" aria-label="100 squares: 11 yes, 89 no"></div>
+    <div class="hero-n"><span data-eda="overall"></span></div>
+    <p class="hero-l"><span data-eda="yes"></span> yes · <span data-eda="no"></span> no. A model that always says “no” is already <span data-eda="noPct"></span> accurate, so accuracy alone means nothing here.</p>
+  </div>
+
+  <div class="anatomy">
+    <h3>20 features in 4 groups</h3>
+    <div class="group"><div class="g-head"><span class="g-name">The client</span><span class="g-count">7</span></div>
+      <div class="g-cols"><span>age</span><span>job</span><span>marital</span><span>education</span><span>default</span><span>housing</span><span>loan</span></div></div>
+    <div class="group"><div class="g-head"><span class="g-name">The last call</span><span class="g-count">4</span></div>
+      <div class="g-cols"><span>contact</span><span>month</span><span>day_of_week</span><span class="cut">duration</span></div></div>
+    <div class="group"><div class="g-head"><span class="g-name">The campaign</span><span class="g-count">4</span></div>
+      <div class="g-cols"><span>campaign</span><span>pdays</span><span>previous</span><span>poutcome</span></div></div>
+    <div class="group"><div class="g-head"><span class="g-name">The economy</span><span class="g-count">5</span></div>
+      <div class="g-cols"><span>emp.var.rate</span><span>cons.price.idx</span><span>cons.conf.idx</span><span>euribor3m</span><span>nr.employed</span></div></div>
+  </div>
+
+  <div class="quality">
+    <h3>Data quality</h3>
+    <div class="q-row"><span>Empty cells</span><b>0</b></div>
+    <div class="q-row"><span>Exact duplicate rows</span><b data-eda="duplicates"></b></div>
+    <div class="q-row"><span><span class="mono">pdays</span> = 999 (not recorded)</span><b data-eda="pdays"></b></div>
+    <div class="unk">
+      <div class="u-title">…but missing values hide as <b>“unknown”</b>:</div>
+      <div class="unk-rows"></div>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>Lead with the imbalance: 11.3% yes. "If a model just says no to everyone, it's 88.7% accurate and completely useless." That's why we judge models on PR-AUC and recall.</p>
+    <p>Features fall into four groups: the client, the last call, the campaign history, and the economy at the time. <code>duration</code> is crossed out. Scene 07 explains why.</p>
+    <p>Quality: no empty cells, but "unknown" is used as a hidden missing value, especially in <code>default</code> (21%).</p>
+  </aside>
+</section>
+
+<!-- ===================================================================
+     06 — FINDING THE SIGNAL
+     =================================================================== -->
+<section class="slide paper" data-scene="06" data-title="Finding the Signal">
+  <div class="slate"><b>Sc. 06</b><span class="dash"></span>Finding the Signal</div>
+  <div class="signal-list">
+    <div class="sig-buttons"></div>
+  </div>
+  <div class="signal-panel">
+    <div class="p-head"></div>
+    <p class="p-sub"></p>
+    <svg id="signal-chart" role="img" aria-label="Subscription rate by category, with the overall rate as a dashed line"></svg>
+  </div>
+  <i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i>
+  <i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i>
+  <aside class="notes">
+    <p>Six patterns from the EDA. Press → to step through them, or click a pattern on the left. Orange bars are above the overall rate (dashed line); grey bars are below it. Hover a bar to see how many clients it covers.</p>
+    <p>1 Past success: 65% say yes again, the strongest signal, but only 1,373 clients have it. 2 Mobile 14.7% vs landline 5.2%. 3 May: the most calls, the lowest rate. 4 More calls in one campaign, lower odds. 5 Economy: subscriptions cluster in the low-employment quarters. That's a pattern over time, not a cause. 6 Students and retirees are the most open.</p>
+    <p>All of these are correlations from EDA. The models have to learn how they combine.</p>
+  </aside>
+</section>
+
+<!-- ===================================================================
+     07 — THE DATA JOURNEY
+     =================================================================== -->
+<section class="slide night" data-scene="07" data-title="The Data Journey">
+  <div class="slate"><b>Sc. 07</b><span class="dash"></span>The Data Journey</div>
+  <h2 class="journey-head display">From <span class="italic">41,188 rows</span> to model-ready.</h2>
+  <p class="journey-sub">Nine steps. Every decision has a reason. Click a step or press →.</p>
+  <div class="track">
+    <div class="rail"><i></i></div>
+    <div class="stations"></div>
+  </div>
+  <div class="drawer">
+    <div><div class="d-tag"></div><div class="d-title"></div></div>
+    <div class="d-body"></div>
+  </div>
+  <i class="f" data-action="step" hidden></i><i class="f" data-action="step" hidden></i><i class="f" data-action="step" hidden></i>
+  <i class="f" data-action="step" hidden></i><i class="f" data-action="step" hidden></i><i class="f" data-action="step" hidden></i>
+  <i class="f" data-action="step" hidden></i><i class="f" data-action="step" hidden></i>
+  <aside class="notes">
+    <p>Walk through the pipeline one step at a time. Spend the most time on step 5, <b>duration</b>: it's the most important decision. A "yes" call lasts 553 seconds on average against 221 for a "no", but you only know the length after hanging up. Keeping it would make the model look great and be useless in practice.</p>
+    <p>Step 8: one shared split for every model, 70/15/15, stratified, seed 42, so the comparison in scene 09 is fair.</p>
+    <p>Step 9: encoders and the scaler only see the training data, so nothing leaks from the test set.</p>
+  </aside>
+</section>
+
+<!-- ===================================================================
+     08 — TEACHING THE MODEL
+     =================================================================== -->
+<section class="slide night" data-scene="08" data-title="Teaching the Model">
+  <div class="slate"><b>Sc. 08</b><span class="dash"></span>Teaching the Model</div>
+  <h2 class="lab-head display">Five models. <span class="italic">One shared test.</span></h2>
+  <div class="shared"></div>
+  <div class="lineup"></div>
+  <div class="model-card"></div>
+  <i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i>
+  <aside class="notes">
+    <p>Each team member owns one model. They all use the same split and metrics. Press → or click a model to see its idea and setup.</p>
+    <p>ANN 1 compares regularization techniques. ANN 2 learns embeddings for every category. ANN 3 lets Keras Tuner find the network and compares class weights with focal loss. AE 1 uses an autoencoder's learned features. AE 2 treats "yes" clients as anomalies.</p>
+    <p>The status tags come from data/models.js. Update them as the work moves on.</p>
+  </aside>
+</section>
+
+<!-- ===================================================================
+     09 — THE RESULTS LAB
+     =================================================================== -->
+<section class="slide paper" data-scene="09" data-title="The Results Lab">
+  <div class="slate"><b>Sc. 09</b><span class="dash"></span>The Results Lab</div>
+  <h2 class="res-head display">The <span class="italic">results</span> lab.</h2>
+  <div class="res-stamp"></div>
+  <div class="metric-tabs" data-interactive></div>
+  <p class="metric-explain"></p>
+  <svg id="res-chart" role="img" aria-label="Test-set metric for each model"></svg>
+  <div class="cm-wrap">
+    <h3>Confusion matrix · test set · click a model</h3>
+    <div class="cm-model"></div>
+    <div class="cm">
+      <span></span><span class="ax">predicted yes</span><span class="ax">predicted no</span>
+      <span class="ax">actually<br>yes</span><div class="cell tp"></div><div class="cell fn"></div>
+      <span class="ax">actually<br>no</span><div class="cell fp"></div><div class="cell tn"></div>
+    </div>
+  </div>
+  <div class="final-pick"></div>
+  <p class="base-note">Test set: <span data-eda="test"></span> clients, <span data-eda="testYes"></span> yes, the same for every model. The dashed line is a model that always says “no”.</p>
+  <i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i>
+  <aside class="notes">
+    <p><b>Right now the numbers here are SIMULATED, so say so out loud if you show this scene before the results are in.</b></p>
+    <p>Lead with PR-AUC: it's the fairest score for an 11% minority. The dashed line is the "always no" baseline. Every model must beat it clearly.</p>
+    <p>Click a model to see its confusion matrix in plain words: who we'd call, who we'd miss.</p>
+  </aside>
+</section>
+
+<!-- ===================================================================
+     10 — WHAT IT MEANS
+     =================================================================== -->
+<section class="slide paper" data-scene="10" data-title="What It Means">
+  <div class="slate"><b>Sc. 10</b><span class="dash"></span>What It Means</div>
+  <h2 class="means-head display">From a call list to a <span class="italic ember">ranking</span>.</h2>
+  <div class="queues">
+    <div class="queue today f" data-action="today">
+      <div class="q-label"><span>Today: dial in list order</span><small>50 calls · real rate ≈ 6 yes</small></div>
+      <div class="people"></div><div class="first" style="width:20%"></div>
+    </div>
+    <div class="queue ranked f" data-action="ranked">
+      <div class="q-label"><span>With a model: dial the likeliest first</span><small>illustration, not a result</small></div>
+      <div class="people"></div><div class="first" style="width:20%"></div>
+    </div>
+    <p class="queue-note f">Same people, same six <b>yes</b>. A ranking does not create them. It moves them to the front of the list.</p>
+  </div>
+  <div class="means-claims">
+    <div class="claim f"><h4>The model ranks. People decide.</h4><p>It gives each client a probability. Agents and managers choose who to call, when, and how often.</p></div>
+    <div class="claim f"><h4>It does not create a yes.</h4><p>It can help spend calls where they are most likely to matter. It cannot change a client’s mind.</p></div>
+    <div class="claim f"><h4>It must be re-checked.</h4><p>It learned from 2008–2010, during a financial crisis. The economy moves, and the model must be tested on new campaigns.</p></div>
+  </div>
+  <aside class="notes">
+    <p>Explain the use: a probability per client turns a list into a ranking. The top row is today, with yes calls scattered through the list. The bottom row is an illustration of what a good ranking does: most yes calls move to the front. It is not a measured result.</p>
+    <p>Be honest about the limits: the model supports decisions, it doesn't make anyone subscribe, and it was trained during an unusual economic period.</p>
+  </aside>
+</section>
+
+<!-- ===================================================================
+     11 — THE LIVE DEMO
+     =================================================================== -->
+<section class="slide night" data-scene="11" data-title="The Demo">
+  <div class="slate"><b>Sc. 11</b><span class="dash"></span>The Demo</div>
+  <h2 class="demo-head display">Meet the <span class="italic ember">next</span> call.</h2>
+  <p class="demo-sub">One client, five moments. This is the demo we are building. Frames show the plan until the app is connected.</p>
+  <div class="strip">
+    <div class="frame f"><small>01</small><h4>The client</h4>
+      <div class="sketch"><div class="fld"></div><div class="fld s"></div><div class="fld"></div><div class="fld s"></div><div class="fld"></div></div>
+      <p>Enter age, job, contact type, month, past campaign, economy.</p><span class="tag">Planned</span></div>
+    <div class="frame f"><small>02</small><h4>The prediction</h4>
+      <div class="sketch" style="align-items:center"><svg viewBox="0 0 120 70" width="150"><path d="M10 64 A50 50 0 0 1 110 64" fill="none" stroke="#2e2b26" stroke-width="10"/><path d="M10 64 A50 50 0 0 1 60 14" fill="none" stroke="#f07a3e" stroke-width="10"/></svg></div>
+      <p>The final model gives the probability of a “yes”.</p><span class="tag">Planned</span></div>
+    <div class="frame f"><small>03</small><h4>The risk band</h4>
+      <div class="sketch"><div class="fld" style="background:#f07a3e;width:80%"></div><div class="fld s"></div><div class="fld" style="width:30%"></div></div>
+      <p>High / medium / low, using a threshold chosen on validation data.</p><span class="tag">Planned</span></div>
+    <div class="frame f"><small>04</small><h4>The reason</h4>
+      <div class="sketch"><div class="fld" style="width:90%"></div><div class="fld" style="width:65%"></div><div class="fld" style="width:40%"></div></div>
+      <p>Which inputs pushed the score up or down.</p><span class="tag">Planned</span></div>
+    <div class="frame f"><small>05</small><h4>The next step</h4>
+      <div class="sketch"><div class="fld s"></div><div class="fld"></div></div>
+      <p>A suggestion for the agent: call now, later, or not this campaign.</p><span class="tag">Planned</span></div>
+  </div>
+  <div class="demo-slot awaiting">Live demo · connected when the app is ready (data/results.js → demo)</div>
+  <aside class="notes">
+    <p>Introduce the demo as a storyboard: one client goes through five moments. Say clearly that the app is being built. These frames show the plan, not finished features.</p>
+    <p>When the app exists, set <code>demo.status = "ready"</code> and <code>demo.url</code> in data/results.js, and a launch button appears here.</p>
+  </aside>
+</section>
+
+<!-- ===================================================================
+     12 — THE FINAL SCENE
+     =================================================================== -->
+<section class="slide night letterbox" data-scene="12" data-title="The Final Scene">
+  <div class="slate"><b>Sc. 12</b><span class="dash"></span>The Final Scene</div>
+  <div class="story-place kicker f fade" data-t="400">Lisbon · another evening</div>
+  <div class="rings"><i class="core"></i><i></i><i></i><i></i><i></i></div>
+  <span class="f" data-t="900" data-action="ring" hidden></span>
+  <div class="final-lines seq">
+    <div class="f" data-t="1500">A phone rings.</div>
+    <div class="f" data-t="4600">Same bank. Same offer.</div>
+    <div class="f" data-t="7600" data-action="hush">But this time, the bank called the people most likely to listen.</div>
+  </div>
+  <div class="final-card f" data-action="card">
+    <div>
+      <div class="t">The <em>Call</em></div>
+      <div class="tag">Every call is a question.</div>
+      <div class="tag2 italic">We are learning to hear the answer before we dial.</div>
+      <div class="team">ANN group · Sara · Lujain · Khalid &nbsp;&nbsp;|&nbsp;&nbsp; Autoencoder group · Shaden · Majid</div>
+      <div class="thanks">Thank you. Now, the demo.</div>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>Back to the opening: same ring, same offer, a different list. Let it play, then press → for the title card.</p>
+    <p>Closing line: "Every call is a question. We are learning to hear the answer before we dial." Then go to the demo / questions.</p>
+  </aside>
+</section>
+
+<div id="tip" role="tooltip"></div>
+</div><!-- /stage -->
+</div><!-- /viewport -->
+
+<div id="chrome">
+  <div id="counter"></div>
+  <div id="controls">
+    <button id="btn-prev" aria-label="Previous">←</button>
+    <button id="btn-next" aria-label="Next">→</button>
+    <button id="btn-full" title="Full screen (F)">Full screen</button>
+  </div>
+  <div id="progress"></div>
+  <div id="notes"></div>
+  <div id="overview">
+    <div class="grid">
+      <p class="hint">→ / Space next · ← back · O scenes · N notes · F full screen · M sound · click right side = next, left side = back</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// Generated by make_eda_data.py from data/bank_clean.csv and data/bank-additional-full.csv. Real values.
+window.EDA = {
+ "rawRows": 41188,
+ "rawCols": 21,
+ "duplicates": 12,
+ "cleanRows": 41176,
+ "cleanCols": 21,
+ "yes": 4639,
+ "no": 36537,
+ "overall": 0.1127,
+ "unknown": [
+  {
+   "column": "job",
+   "count": 330,
+   "pct": 0.8
+  },
+  {
+   "column": "marital",
+   "count": 80,
+   "pct": 0.19
+  },
+  {
+   "column": "education",
+   "count": 1731,
+   "pct": 4.2
+  },
+  {
+   "column": "default",
+   "count": 8597,
+   "pct": 20.87
+  },
+  {
+   "column": "housing",
+   "count": 990,
+   "pct": 2.4
+  },
+  {
+   "column": "loan",
+   "count": 990,
+   "pct": 2.4
+  }
+ ],
+ "missing": 0,
+ "pdaysNotRecorded": 39673,
+ "split": {
+  "train": 28823,
+  "val": 6176,
+  "test": 6177,
+  "trainYes": 3247,
+  "valYes": 696,
+  "testYes": 696
+ },
+ "durationMean": {
+  "no": 221,
+  "yes": 553
+ },
+ "signals": {
+  "poutcome": [
+   {
+    "label": "Success",
+    "rate": 0.6511,
+    "n": 1373
+   },
+   {
+    "label": "Failure",
+    "rate": 0.1423,
+    "n": 4252
+   },
+   {
+    "label": "No previous campaign",
+    "rate": 0.0883,
+    "n": 35551
+   }
+  ],
+  "contact": [
+   {
+    "label": "Mobile",
+    "rate": 0.1474,
+    "n": 26135
+   },
+   {
+    "label": "Landline",
+    "rate": 0.0523,
+    "n": 15041
+   }
+  ],
+  "month": [
+   {
+    "label": "Mar",
+    "rate": 0.5055,
+    "n": 546
+   },
+   {
+    "label": "Apr",
+    "rate": 0.2049,
+    "n": 2631
+   },
+   {
+    "label": "May",
+    "rate": 0.0644,
+    "n": 13767
+   },
+   {
+    "label": "Jun",
+    "rate": 0.1051,
+    "n": 5318
+   },
+   {
+    "label": "Jul",
+    "rate": 0.0904,
+    "n": 7169
+   },
+   {
+    "label": "Aug",
+    "rate": 0.1061,
+    "n": 6176
+   },
+   {
+    "label": "Sep",
+    "rate": 0.4491,
+    "n": 570
+   },
+   {
+    "label": "Oct",
+    "rate": 0.4393,
+    "n": 717
+   },
+   {
+    "label": "Nov",
+    "rate": 0.1015,
+    "n": 4100
+   },
+   {
+    "label": "Dec",
+    "rate": 0.489,
+    "n": 182
+   }
+  ],
+  "job": [
+   {
+    "label": "student",
+    "rate": 0.3143,
+    "n": 875
+   },
+   {
+    "label": "retired",
+    "rate": 0.2526,
+    "n": 1718
+   },
+   {
+    "label": "unemployed",
+    "rate": 0.142,
+    "n": 1014
+   },
+   {
+    "label": "admin.",
+    "rate": 0.1297,
+    "n": 10419
+   },
+   {
+    "label": "management",
+    "rate": 0.1122,
+    "n": 2924
+   },
+   {
+    "label": "unknown",
+    "rate": 0.1121,
+    "n": 330
+   },
+   {
+    "label": "technician",
+    "rate": 0.1083,
+    "n": 6739
+   },
+   {
+    "label": "self-employed",
+    "rate": 0.1049,
+    "n": 1421
+   },
+   {
+    "label": "housemaid",
+    "rate": 0.1,
+    "n": 1060
+   },
+   {
+    "label": "entrepreneur",
+    "rate": 0.0852,
+    "n": 1456
+   },
+   {
+    "label": "services",
+    "rate": 0.0814,
+    "n": 3967
+   },
+   {
+    "label": "blue-collar",
+    "rate": 0.069,
+    "n": 9253
+   }
+  ],
+  "previous": [
+   {
+    "label": "0",
+    "rate": 0.0883,
+    "n": 35551
+   },
+   {
+    "label": "1",
+    "rate": 0.212,
+    "n": 4561
+   },
+   {
+    "label": "2",
+    "rate": 0.4642,
+    "n": 754
+   },
+   {
+    "label": "3+",
+    "rate": 0.5871,
+    "n": 310
+   }
+  ],
+  "calls": [
+   {
+    "label": "1",
+    "rate": 0.1304,
+    "n": 17634
+   },
+   {
+    "label": "2",
+    "rate": 0.1146,
+    "n": 10568
+   },
+   {
+    "label": "3",
+    "rate": 0.1075,
+    "n": 5340
+   },
+   {
+    "label": "4",
+    "rate": 0.094,
+    "n": 2650
+   },
+   {
+    "label": "5",
+    "rate": 0.075,
+    "n": 1599
+   },
+   {
+    "label": "6",
+    "rate": 0.0766,
+    "n": 979
+   },
+   {
+    "label": "7",
+    "rate": 0.0604,
+    "n": 629
+   },
+   {
+    "label": "8",
+    "rate": 0.0425,
+    "n": 400
+   },
+   {
+    "label": "9",
+    "rate": 0.0601,
+    "n": 283
+   },
+   {
+    "label": "10+",
+    "rate": 0.0356,
+    "n": 1094
+   }
+  ],
+  "economy": [
+   {
+    "label": "< 5,050k",
+    "rate": 0.4894,
+    "n": 3300
+   },
+   {
+    "label": "5,050k – 5,150k",
+    "rate": 0.1653,
+    "n": 10194
+   },
+   {
+    "label": "> 5,150k",
+    "rate": 0.0484,
+    "n": 27682
+   }
+  ],
+  "age": [
+   {
+    "label": "17–24",
+    "rate": 0.2399,
+    "n": 1067
+   },
+   {
+    "label": "25–34",
+    "rate": 0.1217,
+    "n": 13684
+   },
+   {
+    "label": "35–44",
+    "rate": 0.0866,
+    "n": 13495
+   },
+   {
+    "label": "45–54",
+    "rate": 0.0864,
+    "n": 8702
+   },
+   {
+    "label": "55–64",
+    "rate": 0.1357,
+    "n": 3566
+   },
+   {
+    "label": "65+",
+    "rate": 0.4728,
+    "n": 662
+   }
+  ]
+ },
+ "corr": {
+  "nr.employed": -0.355,
+  "euribor3m": -0.308,
+  "emp.var.rate": -0.298,
+  "pdays_recorded": 0.325,
+  "previous": 0.23,
+  "campaign": -0.066,
+  "age": 0.03
+ }
+};
+
+</script>
+<script>
+/* ==========================================================================
+   MODEL LINEUP (scene 08) — what each model is and where it stands.
+   These descriptions come from the team plan and the notebooks. No metrics here:
+   metrics live in results.js.
+   Update `status` as work moves on:  "Planned" | "In progress" | "Notebook ready" | "Trained"
+   ========================================================================== */
+
+window.MODELS = [
+  {
+    id: "ann1", name: "ANN 1", title: "Regularization Lab", family: "ANN", glyph: "ann",
+    status: "In progress",
+    idea: "The same network trained five ways, to see what each regularization technique really changes.",
+    config: [
+      ["Variants", "Plain → + L2 → + Dropout → + BatchNorm → all combined + Early Stopping"],
+      ["Input", "One-hot categories + scaled numbers"],
+      ["Imbalance", "Class weights"],
+    ],
+    output: "Side-by-side learning curves and a table of the effect of each technique.",
+  },
+  {
+    id: "ann2", name: "ANN 2", title: "Entity Embeddings", family: "ANN", glyph: "emb",
+    status: "Trained",
+    idea: "Instead of one-hot encoding, every categorical column gets its own Embedding layer, so the model learns which jobs, months and channels behave alike.",
+    config: [
+      ["Architecture", "Functional API · 10 embedding inputs (size 4) + numeric input → Dense 64 → 32 → 1"],
+      ["Final model", "L2 1e-4 · Dropout 0.3 · Adam 1e-3 · batch 256 · Early Stopping"],
+      ["Tuned by hand", "Optimizers, embedding size, learning rate, batch size, dropout, L2 · 3-fold CV"],
+      ["Imbalance", "Class weights"],
+    ],
+    output: "2D map of the learned job embeddings and a manual tuning table.",
+  },
+  {
+    id: "ann3", name: "ANN 3", title: "Keras Tuner + Imbalance", family: "ANN", glyph: "tuner",
+    status: "Notebook ready",
+    idea: "Let Bayesian Optimization search the network, then compare two ways of handling the 11% minority class.",
+    config: [
+      ["Search", "Bayesian Optimization · 25 trials · objective: validation PR-AUC"],
+      ["Space", "1–3 layers · 16–256 units · dropout 0–0.5 · L2 1e-5–1e-2 · LR 1e-4–1e-2 · batch 64–512"],
+      ["Imbalance", "Class weights  vs  focal loss (α 0.75, γ 2)"],
+    ],
+    output: "Best hyperparameters and a class-weights vs focal-loss comparison.",
+  },
+  {
+    id: "ae1", name: "AE 1", title: "Learned Features", family: "Autoencoder", glyph: "ae",
+    status: "In progress",
+    idea: "A denoising autoencoder learns a compressed picture of each client; its encoder then feeds a classifier, first frozen, then fine-tuned.",
+    config: [
+      ["Steps", "Denoising AE → frozen encoder + classifier → fine-tune"],
+      ["Extra", "A 2-unit bottleneck version, to draw the clients in 2D"],
+    ],
+    output: "2D latent space coloured by yes / no.",
+  },
+  {
+    id: "ae2", name: "AE 2", title: "Anomaly Detector", family: "Autoencoder", glyph: "anomaly",
+    status: "In progress",
+    idea: "Trained only on clients who said no. A client it cannot rebuild well looks unusual, and the rebuild error becomes the score.",
+    config: [
+      ["Training data", "“No” clients only"],
+      ["Score", "Reconstruction error"],
+    ],
+    output: "Error distribution for yes vs no, and the error per feature.",
+  },
+];
+
+/* Settings every model shares (from the notebooks) */
+window.SHARED_SETUP = [
+  "Same split · 70 / 15 / 15 · stratified · seed 42",
+  "Encoders & scaler fitted on train only",
+  "Metrics: accuracy · PR-AUC · recall",
+  "Class imbalance handled in every model",
+  "Weights saved for every model",
+  "Trained in Google Colab",
+];
+
+</script>
+<script>
+/* ==========================================================================
+   MODEL RESULTS — the only file you edit when real results are ready.
+   ==========================================================================
+
+   status:
+     "awaiting"  → every metric shows "AWAITING FINAL MODEL RESULTS"
+     "simulated" → shows the numbers below with a "SIMULATED PREVIEW" warning on every result.
+                   THE NUMBERS BELOW ARE MADE UP. They only exist to preview the layout.
+     "final"     → shows the numbers as real results (no warning).
+
+   When a model is finished:
+     1. Copy its TEST-set confusion matrix into cm (tp, fn, fp, tn). Accuracy, precision,
+        recall and F1 are calculated from it automatically.
+     2. Copy its test ROC-AUC and PR-AUC (ANN 2 / ANN 3 call PR-AUC "auc").
+     3. Set done: true for that model.
+   When all are done: set finalModel to the chosen id and status to "final".
+   Test set (same split for everyone): 6,177 clients, 696 "yes", 5,481 "no".
+   ========================================================================== */
+
+window.RESULTS = {
+  status: "simulated",
+
+  testSet: { rows: 6177, yes: 696, no: 5481 },
+
+  finalModel: "ann3",              // id of the chosen model (SIMULATED choice)
+  finalReason: "Highest PR-AUC and F1 on the test set, with recall close to the best model.",   // SIMULATED
+
+  models: [
+    {
+      id: "ann1", name: "ANN 1", title: "Regularization Lab", family: "ANN",
+      done: false,
+      roc_auc: 0.789, pr_auc: 0.441,                       // SIMULATED
+      cm: { tp: 418, fn: 278, fp: 760, tn: 4721 },         // SIMULATED
+    },
+    {
+      id: "ann2", name: "ANN 2", title: "Entity Embeddings", family: "ANN",
+      done: false,
+      roc_auc: 0.798, pr_auc: 0.458,                       // SIMULATED
+      cm: { tp: 446, fn: 250, fp: 822, tn: 4659 },         // SIMULATED
+    },
+    {
+      id: "ann3", name: "ANN 3", title: "Keras Tuner + Imbalance", family: "ANN",
+      done: false,
+      roc_auc: 0.806, pr_auc: 0.472,                       // SIMULATED
+      cm: { tp: 437, fn: 259, fp: 690, tn: 4791 },         // SIMULATED
+    },
+    {
+      id: "ae1", name: "AE 1", title: "Learned Features", family: "Autoencoder",
+      done: false,
+      roc_auc: 0.786, pr_auc: 0.432,                       // SIMULATED
+      cm: { tp: 405, fn: 291, fp: 745, tn: 4736 },         // SIMULATED
+    },
+    {
+      id: "ae2", name: "AE 2", title: "Anomaly Detector", family: "Autoencoder",
+      done: false,
+      roc_auc: 0.702, pr_auc: 0.291,                       // SIMULATED
+      cm: { tp: 352, fn: 344, fp: 1210, tn: 4271 },        // SIMULATED
+    },
+  ],
+
+  /* Demo (scene 11). Leave url empty until the app exists.
+     screenshots: paths relative to index.html, e.g. "assets/demo-1.png" */
+  demo: {
+    status: "planned",             // "planned" | "ready"
+    url: "",
+    screenshots: [],
+  },
+};
+
+</script>
+<script>
+/* ==========================================================================
+   Scene logic and charts. All numbers come from data/eda.js (real),
+   data/models.js (team plan) and data/results.js (model results / simulation).
+   ========================================================================== */
+(function () {
+  const E = window.EDA, R = window.RESULTS, M = window.MODELS;
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const NS = "http://www.w3.org/2000/svg";
+  const pct = (v, d = 1) => (v * 100).toFixed(d) + "%";
+  const fmt = (n) => n.toLocaleString("en-US");
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  function svgEl(tag, attrs = {}, parent) {
+    const el = document.createElementNS(NS, tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(el);
+    return el;
+  }
+
+  /* ---------- tooltip (lives inside the stage so it scales with it) ---------- */
+  const tip = document.getElementById("tip");
+  const stage = document.getElementById("stage");
+  function stagePoint(e) {
+    const r = stage.getBoundingClientRect();
+    const s = r.width / 1920;
+    return { x: (e.clientX - r.left) / s, y: (e.clientY - r.top) / s };
+  }
+  function showTip(e, html) {
+    tip.innerHTML = html;
+    tip.classList.add("show");
+    const p = stagePoint(e);
+    const w = tip.offsetWidth;
+    tip.style.left = Math.min(p.x + 18, 1920 - w - 20) + "px";
+    tip.style.top = (p.y - tip.offsetHeight - 14) + "px";
+  }
+  function hideTip() { tip.classList.remove("show"); }
+  function bindTip(el, html) {
+    el.addEventListener("mousemove", (e) => showTip(e, typeof html === "function" ? html() : html));
+    el.addEventListener("mouseleave", hideTip);
+  }
+
+  /* fill every [data-eda] placeholder with the real number */
+  const EDA_TEXT = {
+    rawRows: fmt(E.rawRows), cleanRows: fmt(E.cleanRows), yes: fmt(E.yes), no: fmt(E.no),
+    overall: pct(E.overall), noPct: pct(1 - E.overall), duplicates: fmt(E.duplicates),
+    features: E.rawCols - 1, train: fmt(E.split.train), val: fmt(E.split.val), test: fmt(E.split.test),
+    testYes: fmt(E.split.testYes), pdays: pct(E.pdaysNotRecorded / E.rawRows),
+    durNo: E.durationMean.no, durYes: E.durationMean.yes,
+  };
+  document.querySelectorAll("[data-eda]").forEach((el) => { el.textContent = EDA_TEXT[el.dataset.eda]; });
+
+  /* ======================================================================
+     01 — THE STORY
+     ====================================================================== */
+  const ringScene = {
+    ring(s, on) {
+      s.classList.toggle("ringing", on);
+      s.classList.remove("hushed");
+      if (on) window.Ring && window.Ring.play(2);
+    },
+    hush(s, on) { s.classList.toggle("hushed", on); if (on && window.Ring) window.Ring.stop(); },
+    leave(s) { s.classList.remove("ringing", "hushed"); window.Ring && window.Ring.stop(); },
+  };
+
+  /* ======================================================================
+     02 — THE HIDDEN PROBLEM: one dot per client contact
+     ====================================================================== */
+  const wall = (() => {
+    const canvas = document.getElementById("wall");
+    const COLS = 374, CELL = 4.6, N = E.cleanRows;
+    const ROWS = Math.ceil(N / COLS);
+    const W = COLS * CELL, H = ROWS * CELL, DPR = 2;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+    const ctx = canvas.getContext("2d");
+    ctx.scale(DPR, DPR);
+
+    // fixed pseudo-random set of E.yes dots (seeded, so it looks the same every time)
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const isYes = new Uint8Array(N);
+    let placed = 0;
+    while (placed < E.yes) { const k = Math.floor(rnd() * N); if (!isYes[k]) { isYes[k] = 1; placed++; } }
+
+    let raf = null, state = "off";
+    const R0 = CELL * 0.36;
+    function draw(rowsShown, mode) {
+      ctx.clearRect(0, 0, W, H);
+      const noCol = mode === "yes" ? "#2a2724" : "#4a453d";
+      const yesCol = "#f07a3e";
+      for (let i = 0; i < N; i++) {
+        const r = Math.floor(i / COLS);
+        if (r >= rowsShown) break;
+        const c = i % COLS;
+        const yes = mode === "yes" && isYes[i];
+        ctx.fillStyle = yes ? yesCol : noCol;
+        ctx.beginPath();
+        ctx.arc(c * CELL + CELL / 2, r * CELL + CELL / 2, R0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    function build() {
+      cancelAnimationFrame(raf);
+      const t0 = performance.now(), dur = 2600;
+      const step = (t) => {
+        const k = Math.min(1, (t - t0) / dur);
+        draw(Math.ceil(ROWS * (1 - Math.pow(1 - k, 3))), "all");
+        if (k < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    }
+    return {
+      enter() { state = "all"; build(); },
+      yes(s, on) { cancelAnimationFrame(raf); draw(ROWS, on ? "yes" : "all"); },
+      leave() { cancelAnimationFrame(raf); ctx.clearRect(0, 0, W, H); },
+    };
+  })();
+
+  /* ======================================================================
+     03 — THE QUESTION: the phone signal flattens into a measured axis
+     ====================================================================== */
+  const question = (() => {
+    const svg = document.getElementById("signal-line");
+    const W = 1920, Y = 60;
+    let d = `M0 ${Y}`;
+    for (let x = 0; x <= 760; x += 4) {
+      const env = Math.sin((x / 760) * Math.PI) * 38 * (1 - x / 900);
+      d += ` L${x} ${(Y + Math.sin(x / 9) * env).toFixed(1)}`;
+    }
+    d += ` L${W} ${Y}`;
+    const path = svgEl("path", { d }, svg);
+    const len = 2300;
+    path.style.strokeDasharray = len;
+    path.style.strokeDashoffset = len;
+    const ticks = [];
+    for (let x = 960; x <= 1840; x += 80) {
+      ticks.push(svgEl("line", { x1: x, x2: x, y1: Y - 12, y2: Y + 12, class: "tick", opacity: 0 }, svg));
+    }
+    return {
+      enter() {
+        path.style.transition = "none"; path.style.strokeDashoffset = len;
+        ticks.forEach((t) => { t.style.transition = "none"; t.setAttribute("opacity", 0); });
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          path.style.transition = "stroke-dashoffset 3.2s cubic-bezier(.4,.1,.2,1)";
+          path.style.strokeDashoffset = 0;
+          ticks.forEach((t, i) => { t.style.transition = `opacity .4s ${2.2 + i * 0.08}s`; t.setAttribute("opacity", 1); });
+        }));
+      },
+    };
+  })();
+
+  /* ======================================================================
+     05 — INSIDE THE DATA
+     ====================================================================== */
+  const inside = (() => {
+    const waffle = $(".waffle");
+    const yesCount = Math.round(E.overall * 100);
+    for (let i = 0; i < 100; i++) {
+      const d = document.createElement("i");
+      if (i >= 100 - yesCount) d.className = "yes";
+      d.style.transitionDelay = (i * 12) + "ms";
+      waffle.appendChild(d);
+    }
+    const unk = $(".unk-rows");
+    const max = Math.max(...E.unknown.map((u) => u.pct));
+    E.unknown.slice().sort((a, b) => b.pct - a.pct).forEach((u) => {
+      const row = document.createElement("div");
+      row.className = "unk-row";
+      row.innerHTML = `<span class="c">${u.column}</span><span><span class="bar" data-w="${(u.pct / max) * 100}"></span></span><span class="v">${u.pct.toFixed(1)}%</span>`;
+      bindTip(row, `<b>${u.column}</b> · ${fmt(u.count)} clients are “unknown”`);
+      unk.appendChild(row);
+    });
+    return {
+      enter() {
+        waffle.classList.remove("show");
+        unk.querySelectorAll(".bar").forEach((b) => (b.style.width = 0));
+        setTimeout(() => {
+          waffle.classList.add("show");
+          unk.querySelectorAll(".bar").forEach((b) => (b.style.width = b.dataset.w + "%"));
+        }, 300);
+      },
+    };
+  })();
+
+  /* ======================================================================
+     06 — FINDING THE SIGNAL
+     ====================================================================== */
+  const S = E.signals;
+  const find = (arr, label) => arr.find((d) => d.label === label);
+  const SIGNALS = [
+    {
+      key: "poutcome", tab: "Past campaign", orient: "h",
+      list: "A past “yes” predicts the next one",
+      head: () => `Said yes before? <em>${pct(find(S.poutcome, "Success").rate, 0)}</em> say yes again.`,
+      sub: () => `Clients whose previous campaign ended in success subscribed ${pct(find(S.poutcome, "Success").rate)} of the time, against ${pct(E.overall)} overall. Only ${fmt(find(S.poutcome, "Success").n)} clients had a past success.`,
+    },
+    {
+      key: "contact", tab: "Channel", orient: "h",
+      list: "Mobile beats landline",
+      head: () => `Mobile calls convert <em>${(find(S.contact, "Mobile").rate / find(S.contact, "Landline").rate).toFixed(1)}×</em> better than landlines.`,
+      sub: () => `${pct(find(S.contact, "Mobile").rate)} on mobile vs ${pct(find(S.contact, "Landline").rate)} on landline.`,
+    },
+    {
+      key: "month", tab: "Timing", orient: "v",
+      list: "The busiest month was the worst",
+      head: () => `The busiest month was <em>the worst</em> month.`,
+      sub: () => `May: ${fmt(find(S.month, "May").n)} calls, ${pct(find(S.month, "May").rate)} yes. March, September, October and December had few calls and 44–51% yes.`,
+    },
+    {
+      key: "calls", tab: "Persistence", orient: "v",
+      list: "More calls, lower odds",
+      head: () => `Every extra call <em>lowers</em> the odds.`,
+      sub: () => `${pct(S.calls[0].rate)} yes on the first call of a campaign; ${pct(S.calls[S.calls.length - 1].rate)} after 10 or more calls.`,
+    },
+    {
+      key: "economy", tab: "Economy", orient: "v",
+      list: "The economy sets the mood",
+      head: () => `Yes was <em>${(S.economy[0].rate / S.economy[2].rate).toFixed(0)}× more common</em> when employment was low.`,
+      sub: () => `Number of employed people (quarterly indicator, thousands). The strongest numeric signal: correlation with yes ${E.corr["nr.employed"].toFixed(2)}. A pattern in time, not a cause.`,
+    },
+    {
+      key: "job", tab: "Who", orient: "h",
+      list: "Students and retirees are the most open",
+      head: () => `Students and retirees are the <em>most open</em>.`,
+      sub: () => `Students ${pct(find(S.job, "student").rate)}, retired ${pct(find(S.job, "retired").rate)}; blue-collar workers ${pct(find(S.job, "blue-collar").rate)}.`,
+    },
+  ];
+
+  function barChart(svg, data, opts) {
+    svg.innerHTML = "";
+    const W = opts.width, H = opts.height;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    const max = opts.max || Math.max(...data.map((d) => d.value), opts.ref || 0) * 1.12;
+    const ember = css("--ember"), no = css("--no");
+
+    if (opts.orient === "h") {
+      const L = opts.labelW || 260, top = 10, bottom = 40;
+      const band = (H - top - bottom) / data.length;
+      const bh = Math.min(42, band * 0.62);
+      const x = (v) => L + (v / max) * (W - L - 90);
+      // reference line first, so bars and labels sit on top of it
+      if (opts.ref != null) {
+        const rx = x(opts.ref);
+        svgEl("line", { x1: rx, x2: rx, y1: 0, y2: H - bottom + 6, class: "ref-line", opacity: 0.45 }, svg);
+        svgEl("text", { x: rx + 8, y: H - 8, class: "ref-label" }, svg).textContent = opts.refText;
+      }
+      data.forEach((d, i) => {
+        const y = top + i * band + (band - bh) / 2;
+        svgEl("text", { x: L - 16, y: y + bh / 2 + 6, "text-anchor": "end", class: "axis-label", style: "font-size:18px;fill:" + css("--ink-2") }, svg).textContent = d.label;
+        const r = svgEl("rect", { x: L, y, height: bh, width: 0, rx: 4, fill: d.color || (d.value > (opts.ref ?? -1) ? ember : no), class: "bar" }, svg);
+        requestAnimationFrame(() => requestAnimationFrame(() => r.setAttribute("width", Math.max(2, x(d.value) - L))));
+        svgEl("text", { x: x(d.value) + 10, y: y + bh / 2 + 6, class: "val-label" }, svg).textContent = d.text;
+        const hit = svgEl("rect", { x: 0, y: top + i * band, width: W, height: band, class: "hit" }, svg);
+        bindTip(hit, d.tip);
+        if (d.onClick) { hit.style.cursor = "pointer"; hit.addEventListener("click", d.onClick); }
+      });
+    } else {
+      const left = 10, right = 10, top = 30, bottom = 50;
+      const band = (W - left - right) / data.length;
+      const bw = Math.min(70, band * 0.6);
+      const y = (v) => H - bottom - (v / max) * (H - top - bottom);
+      if (opts.ref != null) {
+        const ry = y(opts.ref);
+        svgEl("line", { x1: 0, x2: W, y1: ry, y2: ry, class: "ref-line" }, svg);
+        svgEl("text", { x: W, y: ry - 10, "text-anchor": "end", class: "ref-label" }, svg).textContent = opts.refText;
+      }
+      data.forEach((d, i) => {
+        const cx = left + i * band + band / 2;
+        const r = svgEl("rect", { x: cx - bw / 2, y: H - bottom, width: bw, height: 0, rx: 4, fill: d.value > (opts.ref ?? -1) ? ember : no, class: "bar" }, svg);
+        requestAnimationFrame(() => requestAnimationFrame(() => { r.setAttribute("y", y(d.value)); r.setAttribute("height", H - bottom - y(d.value)); }));
+        svgEl("rect", { x: cx - bw / 2, y: H - bottom, width: bw, height: 2, fill: css("--ink") }, svg);
+        svgEl("text", { x: cx, y: y(d.value) - 12, "text-anchor": "middle", class: "val-label" }, svg).textContent = d.text;
+        svgEl("text", { x: cx, y: H - bottom + 30, "text-anchor": "middle", class: "axis-label", style: "font-size:18px" }, svg).textContent = d.label;
+        const hit = svgEl("rect", { x: left + i * band, y: 0, width: band, height: H, class: "hit" }, svg);
+        bindTip(hit, d.tip);
+      });
+    }
+  }
+
+  const signal = (() => {
+    const list = $(".sig-buttons");
+    const chart = document.getElementById("signal-chart");
+    const head = $(".p-head"), sub = $(".p-sub");
+    let current = 0;
+    SIGNALS.forEach((sg, i) => {
+      const b = document.createElement("button");
+      b.className = "sig";
+      b.innerHTML = `<small>${String(i + 1).padStart(2, "0")} · ${sg.tab}</small><span>${sg.list}</span>`;
+      b.addEventListener("click", () => select(i));
+      list.appendChild(b);
+    });
+    function select(i) {
+      current = i;
+      const sg = SIGNALS[i];
+      [...list.children].forEach((b, k) => b.classList.toggle("on", k === i));
+      head.innerHTML = sg.head();
+      sub.textContent = sg.sub();
+      const data = S[sg.key].map((d) => ({
+        label: d.label, value: d.rate, text: pct(d.rate, d.rate < 0.1 ? 1 : 0),
+        tip: `<b>${pct(d.rate)}</b> said yes · ${d.label} · ${fmt(d.n)} clients`,
+      }));
+      barChart(chart, data, {
+        width: 1064, height: 560, orient: sg.orient, ref: E.overall,
+        refText: `overall ${pct(E.overall)}`, labelW: sg.key === "poutcome" ? 300 : 200,
+      });
+    }
+    return {
+      enter() { select(current); },
+      next(s, on) { if (on) select((current + 1) % SIGNALS.length); },
+      select,
+    };
+  })();
+
+  /* ======================================================================
+     07 — THE DATA JOURNEY
+     ====================================================================== */
+  const STATIONS = [
+    { tag: "Load", name: "Raw data", stat: `${fmt(E.rawRows)} × ${E.rawCols}`,
+      body: `UCI <b>bank-additional-full.csv</b>, separated by “;”. ${fmt(E.rawRows)} client contacts, ${E.rawCols - 1} features and the target <b>y</b>. <b>${E.missing}</b> empty cells, but missing values are hidden as the text “unknown”.` },
+    { tag: "Clean", name: "Duplicates", stat: `−${E.duplicates} rows`, cut: true,
+      body: `${E.duplicates} rows were exact copies and were removed. <b>${fmt(E.cleanRows)}</b> rows remain.` },
+    { tag: "Clean", name: "“unknown”", stat: "kept as a category",
+      body: `Six columns use “unknown”. <b>default</b> alone is ${E.unknown.find((u) => u.column === "default").pct}% unknown. Dropping those rows would lose too many clients, so “unknown” stays as its own category.` },
+    { tag: "Clean", name: "Outliers", stat: "kept",
+      body: `Old clients, long calls and many calls are <b>real values, not errors</b>, so the outliers are kept. The IQR rule says nothing useful for <b>pdays</b> and <b>previous</b>: almost every value is 999 / 0.` },
+    { tag: "Leakage", name: "duration", stat: "dropped", cut: true,
+      body: `Call length was ${E.durationMean.no}s on average for “no” and <b>${E.durationMean.yes}s</b> for “yes”. But it is only known <b>after the call ends</b>. A model that uses it would be cheating, so it was removed.` },
+    { tag: "Feature", name: "pdays flag", stat: "999 → −1",
+      body: `<b>pdays = 999</b> means “no value recorded” (${pct(E.pdaysNotRecorded / E.rawRows)} of rows). A new flag <b>pdays_recorded</b> keeps that information, and 999 becomes −1 so it does not distort scaling.` },
+    { tag: "Target", name: "y → 1 / 0", stat: `${fmt(E.cleanRows)} × ${E.cleanCols}`,
+      body: `yes / no becomes 1 / 0. Saved as <b>bank_clean.csv</b>. After dropping duration, some rows look identical. There is no client ID, so they are kept.` },
+    { tag: "Split", name: "70 / 15 / 15", stat: "stratified · seed 42",
+      body: `<span class="mono">train ${fmt(E.split.train)} · validation ${fmt(E.split.val)} · test ${fmt(E.split.test)}</span><br>Stratified on y, so every part keeps the same ${pct(E.overall)} “yes”. <b>Every model uses this exact split</b>, so the results can be compared.` },
+    { tag: "Encode", name: "Encode & scale", stat: "fitted on train only",
+      body: `Categories become <b>one-hot vectors</b> (ANN 1, ANN 3, autoencoders) or <b>embedding IDs</b> (ANN 2). Numbers are standardized. Both are <b>fitted on the training set only</b>, so the test set stays unseen.` },
+  ];
+  const journey = (() => {
+    const wrap = $(".stations");
+    const rail = $(".track .rail i");
+    const tag = $(".drawer .d-tag"), title = $(".drawer .d-title"), body = $(".drawer .d-body");
+    STATIONS.forEach((st, i) => {
+      const b = document.createElement("button");
+      b.className = "station" + (st.cut ? " cut" : "");
+      b.innerHTML = `<small>${String(i + 1).padStart(2, "0")}</small><span>${st.name}</span><em>${st.stat}</em>`;
+      b.addEventListener("click", () => select(i));
+      wrap.appendChild(b);
+    });
+    let current = 0;
+    function select(i) {
+      current = i;
+      [...wrap.children].forEach((b, k) => b.classList.toggle("on", k <= i));
+      rail.style.width = (i / (STATIONS.length - 1)) * 100 + "%";
+      tag.textContent = `Step ${i + 1} · ${STATIONS[i].tag}`;
+      title.textContent = STATIONS[i].name;
+      body.innerHTML = STATIONS[i].body;
+    }
+    return {
+      enter() { select(0); },
+      step(s, on) { select(on ? Math.min(current + 1, STATIONS.length - 1) : Math.max(current - 1, 0)); },
+      select,
+    };
+  })();
+
+  /* ======================================================================
+     08 — TEACHING THE MODEL
+     ====================================================================== */
+  function glyph(kind) {
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 120 56");
+    svg.classList.add("glyph");
+    const cols = {
+      ann: [6, 5, 3, 1], emb: [2, 2, 2, 5, 3, 1], tuner: [5, 4, 4, 2, 1],
+      ae: [6, 4, 2, 4, 6], anomaly: [6, 4, 2, 4, 6],
+    }[kind];
+    const gap = 120 / (cols.length + 1);
+    cols.forEach((n, ci) => {
+      const x = gap * (ci + 1);
+      for (let k = 0; k < n; k++) {
+        const y = 28 + (k - (n - 1) / 2) * 8.5;
+        const hot = (kind === "anomaly" && ci === cols.length - 1 && k === 0) || (ci === cols.length - 1 && n === 1);
+        svgEl("circle", { cx: x, cy: y, r: 2.6, fill: hot ? "#f07a3e" : "#b8b0a0" }, svg);
+      }
+    });
+    return svg;
+  }
+  const lab = (() => {
+    const shared = $(".shared");
+    window.SHARED_SETUP.forEach((t) => { const s = document.createElement("span"); s.textContent = t; shared.appendChild(s); });
+    const lineup = $(".lineup");
+    let fam = null;
+    M.forEach((m, i) => {
+      if (m.family !== fam) {
+        fam = m.family;
+        const h = document.createElement("div"); h.className = "fam"; h.textContent = fam === "ANN" ? "Artificial neural networks" : "Autoencoders";
+        lineup.appendChild(h);
+      }
+      const b = document.createElement("button");
+      b.className = "model-btn";
+      b.appendChild(glyph(m.glyph));
+      const t = document.createElement("span");
+      t.innerHTML = `<span class="m-name">${m.name}</span><span class="m-title">${m.title}</span>`;
+      b.appendChild(t);
+      const st = document.createElement("span");
+      st.className = "m-status" + (m.status === "Trained" || m.status === "Notebook ready" ? " go" : "");
+      st.textContent = m.status;
+      b.appendChild(st);
+      b.addEventListener("click", () => select(i));
+      lineup.appendChild(b);
+    });
+    const card = $(".model-card");
+    let current = 0;
+    function select(i) {
+      current = i;
+      const m = M[i];
+      [...lineup.querySelectorAll(".model-btn")].forEach((b, k) => b.classList.toggle("on", k === i));
+      card.innerHTML = `<div class="c-name">${m.name} · ${m.family} · ${m.status}</div>
+        <div class="c-title">${m.title}</div>
+        <p class="c-idea">${m.idea}</p>
+        <dl>${m.config.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>
+        <p class="c-out"><b>Key output →</b> ${m.output}</p>`;
+    }
+    return { enter() { select(current); }, next(s, on) { if (on) select((current + 1) % M.length); }, select };
+  })();
+
+  /* ======================================================================
+     09 — RESULTS LAB
+     ====================================================================== */
+  const METRICS = [
+    { key: "accuracy", name: "Accuracy", base: (t) => t.no / t.rows, explain: "Share of all test clients predicted correctly. Saying “no” to everyone already scores 88.7%, so on its own it says little." },
+    { key: "precision", name: "Precision", base: null, explain: "Of the clients the model would call, how many actually said yes." },
+    { key: "recall", name: "Recall", base: () => 0, explain: "Of the clients who said yes, how many the model found. The “always no” model finds none." },
+    { key: "f1", name: "F1", base: () => 0, explain: "Balance of precision and recall in one number." },
+    { key: "roc_auc", name: "ROC-AUC", base: () => 0.5, explain: "How well the model ranks a yes above a no, at every threshold. 0.5 = random." },
+    { key: "pr_auc", name: "PR-AUC", base: (t) => t.yes / t.rows, explain: "Precision–recall area: the fairest single score for an 11% minority class. Random ranking scores the yes rate." },
+  ];
+  function metricsOf(m) {
+    const { tp, fn, fp, tn } = m.cm;
+    const precision = tp / (tp + fp), recall = tp / (tp + fn);
+    return {
+      accuracy: (tp + tn) / (tp + fn + fp + tn), precision, recall,
+      f1: (2 * precision * recall) / (precision + recall), roc_auc: m.roc_auc, pr_auc: m.pr_auc,
+    };
+  }
+  const results = (() => {
+    const status = R.status;
+    const slide = document.querySelector('[data-scene="09"]');
+    const stamp = $(".res-stamp", slide);
+    if (status === "simulated") {
+      stamp.innerHTML = `<span class="sim-stamp">Simulated preview — not real results</span><p>Every number on this scene is invented to preview the layout. Real results replace them in data/results.js.</p>`;
+    } else if (status === "awaiting") {
+      stamp.innerHTML = `<span class="sim-stamp">Awaiting final model results</span>`;
+    } else stamp.innerHTML = "";
+
+    const tabs = $(".metric-tabs", slide);
+    const chart = document.getElementById("res-chart");
+    const explain = $(".metric-explain", slide);
+    let metric = 5, chosen = R.models.findIndex((m) => m.id === R.finalModel);
+    if (chosen < 0) chosen = 0;
+
+    METRICS.forEach((mt, i) => {
+      const b = document.createElement("button");
+      b.textContent = mt.name;
+      b.addEventListener("click", () => { metric = i; draw(); });
+      tabs.appendChild(b);
+    });
+
+    function draw() {
+      [...tabs.children].forEach((b, k) => b.classList.toggle("on", k === metric));
+      const mt = METRICS[metric];
+      explain.textContent = mt.explain;
+      if (status === "awaiting") {
+        chart.innerHTML = "";
+        chart.setAttribute("viewBox", "0 0 1040 470");
+        R.models.forEach((m, i) => {
+          const y = 20 + i * 88;
+          svgEl("text", { x: 0, y: y + 30, class: "axis-label", style: "font-size:20px;fill:" + css("--ink") }, chart).textContent = `${m.name} · ${m.title}`;
+          svgEl("rect", { x: 500, y: y + 6, width: 530, height: 40, rx: 4, fill: "none", stroke: css("--paper-line"), "stroke-dasharray": "6 6" }, chart);
+          svgEl("text", { x: 765, y: y + 32, "text-anchor": "middle", class: "axis-label", style: "letter-spacing:.12em" }, chart).textContent = "AWAITING FINAL MODEL RESULTS";
+        });
+        drawCM();
+        return;
+      }
+      const ember = css("--ember"), ink3 = "#9c9483";
+      const data = R.models.map((m, i) => {
+        const v = metricsOf(m)[mt.key];
+        return {
+          label: `${m.name} · ${m.title}`, value: v, text: mt.key === "accuracy" ? pct(v) : v.toFixed(3),
+          color: i === chosen ? ember : ink3,
+          tip: `<b>${mt.key === "accuracy" ? pct(v) : v.toFixed(3)}</b> ${mt.name} · ${m.name}${status === "simulated" ? " · SIMULATED" : ""}`,
+          onClick: () => { chosen = i; draw(); },
+        };
+      });
+      const base = mt.base ? mt.base(R.testSet) : null;
+      barChart(chart, data, {
+        width: 1040, height: 470, orient: "h", labelW: 360, max: 1,
+        ref: base, refText: base != null ? `always “no”: ${mt.key === "accuracy" ? pct(base) : base.toFixed(3)}` : "",
+      });
+      drawCM();
+    }
+
+    function drawCM() {
+      const m = R.models[chosen];
+      $(".cm-model", slide).textContent = `${m.name} · ${m.title}`;
+      const cells = { tp: "Called · said yes", fn: "Missed · would have said yes", fp: "Called · said no", tn: "Skipped · would have said no" };
+      Object.keys(cells).forEach((k) => {
+        const el = $(".cell." + k, slide);
+        el.innerHTML = status === "awaiting"
+          ? `<b>—</b><span>${cells[k]}</span>`
+          : `<b>${fmt(m.cm[k])}</b><span>${cells[k]}</span>`;
+      });
+      const fin = R.models.find((x) => x.id === R.finalModel);
+      const fp = $(".final-pick", slide);
+      fp.innerHTML = status === "awaiting" || !fin
+        ? `<small>Final model</small><div class="fp-name">Awaiting final model results</div>`
+        : `<small>Final model${status === "simulated" ? " · simulated choice" : ""}</small><div class="fp-name"><em>${fin.name}</em> · ${fin.title}</div><p>${R.finalReason}</p>`;
+    }
+    return { enter() { draw(); }, next(s, on) { if (on) { metric = (metric + 1) % METRICS.length; draw(); } } };
+  })();
+
+  /* ======================================================================
+     10 — WHAT IT MEANS: a list vs a ranking (illustration)
+     ====================================================================== */
+  const means = (() => {
+    const N = 50, yes = Math.round(N * E.overall); // ≈ 6 of 50 at the real rate
+    const a = $(".queue.today .people"), b = $(".queue.ranked .people");
+    // today: spread evenly through the list
+    const todayYes = new Set(Array.from({ length: yes }, (_, k) => Math.floor((k + 0.5) * (N / yes))));
+    // ranked (illustration): most early, one or two late — a model is never perfect
+    const rankedYes = new Set([0, 2, 3, 6, 11, 27].slice(0, yes));
+    for (let i = 0; i < N; i++) {
+      const p = document.createElement("i"); if (todayYes.has(i)) p.className = "yes"; p.style.transitionDelay = i * 18 + "ms"; a.appendChild(p);
+      const q = document.createElement("i"); if (rankedYes.has(i)) q.className = "yes"; q.style.transitionDelay = i * 18 + "ms"; b.appendChild(q);
+    }
+    return {
+      enter() { document.querySelectorAll(".queue").forEach((q) => q.classList.remove("show")); },
+      today(s, on) { $(".queue.today").classList.toggle("show", on); },
+      ranked(s, on) { $(".queue.ranked").classList.toggle("show", on); },
+    };
+  })();
+
+  /* ======================================================================
+     11 — THE DEMO
+     ====================================================================== */
+  (() => {
+    const slot = $(".demo-slot");
+    const d = R.demo || {};
+    if (d.status === "ready" && d.url) {
+      slot.innerHTML = `<span class="kicker ember">The app is ready</span><a href="${d.url}" target="_blank" rel="noopener">Open the live demo →</a>`;
+      slot.classList.remove("awaiting");
+    }
+  })();
+
+  /* ======================================================================
+     12 — FINAL SCENE
+     ====================================================================== */
+  const finale = {
+    ring: ringScene.ring, hush: ringScene.hush,
+    card(s, on) { if (on) window.Ring && window.Ring.stop(); },
+    leave: ringScene.leave,
+  };
+
+  window.SCENES = {
+    "01": ringScene, "02": wall, "03": question, "05": inside, "06": signal,
+    "07": journey, "08": lab, "09": results, "10": means, "12": finale,
+  };
+})();
+
+</script>
+<script>
+/* ==========================================================================
+   Deck engine — fixed 1920×1080 stage, fragments, timed sequences, notes,
+   scene navigation, sound. No dependencies, works from file://.
+
+   Keys:  → / Space / PgDn / Enter   next      ← / PgUp / Backspace   back
+          Home / End   first / last   F   full screen   N   notes
+          O / Esc   scene navigation    M   sound on / off
+   Mouse: click right 70% = next, left 30% = back (not on buttons or charts)
+   Touch: swipe left / right
+   ========================================================================== */
+(function () {
+  const stage = document.getElementById("stage");
+  const slides = [...stage.querySelectorAll(".slide")];
+  const progress = document.getElementById("progress");
+  const counter = document.getElementById("counter");
+  const notesEl = document.getElementById("notes");
+  const overview = document.getElementById("overview");
+  const SCENES = window.SCENES || {};
+
+  let index = 0;
+  let lock = false;
+  let timers = [];
+  let soundOn = false;
+
+  /* ---------- stage scaling ---------- */
+  function fit() {
+    const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    stage.style.transform = `translate(${-960 * s}px, ${-540 * s}px) scale(${s})`;
+  }
+  window.addEventListener("resize", fit);
+  fit();
+
+  /* ---------- fragments ---------- */
+  const frags = (slide) => [...slide.querySelectorAll(".f")].filter((f) => !f.hasAttribute("data-t"));
+  const timed = (slide) => [...slide.querySelectorAll(".f[data-t]")];
+
+  function markCurrent(slide) {
+    // inside a .seq only the last shown line stays visible
+    slide.querySelectorAll(".seq").forEach((seq) => {
+      const on = [...seq.children].filter((c) => c.classList.contains("on"));
+      seq.querySelectorAll(".current").forEach((c) => c.classList.remove("current"));
+      if (on.length) on[on.length - 1].classList.add("current");
+    });
+  }
+
+  function show(slide, f) {
+    f.classList.add("on");
+    markCurrent(slide);
+    const act = f.dataset.action;
+    const id = slide.dataset.scene;
+    if (act && SCENES[id] && SCENES[id][act]) SCENES[id][act](slide, true);
+  }
+  function hide(slide, f) {
+    f.classList.remove("on");
+    markCurrent(slide);
+    const act = f.dataset.action;
+    const id = slide.dataset.scene;
+    if (act && SCENES[id] && SCENES[id][act]) SCENES[id][act](slide, false);
+  }
+
+  function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+
+  /* ---------- navigation ---------- */
+  function go(i, revealAll) {
+    if (i < 0 || i >= slides.length) return;
+    clearTimers();
+    const old = slides[index];
+    if (old && old !== slides[i]) {
+      old.classList.remove("active");
+      const oid = old.dataset.scene;
+      if (SCENES[oid] && SCENES[oid].leave) SCENES[oid].leave(old);
+    }
+    index = i;
+    const s = slides[i];
+    // reset fragments
+    s.querySelectorAll(".f").forEach((f) => f.classList.remove("on", "current"));
+    s.classList.add("active");
+    document.body.classList.toggle("on-paper", s.classList.contains("paper"));
+    const id = s.dataset.scene;
+    if (SCENES[id] && SCENES[id].enter) SCENES[id].enter(s);
+
+    if (revealAll) {
+      timed(s).forEach((f) => show(s, f));
+      frags(s).forEach((f) => show(s, f));
+    } else {
+      // auto-timed fragments (cinematic scenes)
+      timed(s).forEach((f) => {
+        timers.push(setTimeout(() => show(s, f), +f.dataset.t));
+      });
+    }
+    try { history.replaceState(null, "", "#" + (i + 1)); } catch (e) { /* not allowed in some frames */ }
+    updateChrome();
+  }
+
+  function next() {
+    if (lock) return;
+    const s = slides[index];
+    // a timed sequence still running → jump to its next line
+    const pendingTimed = timed(s).filter((f) => !f.classList.contains("on"));
+    if (pendingTimed.length) {
+      clearTimers();
+      show(s, pendingTimed[0]);
+      // keep the rest running from here
+      const base = +pendingTimed[0].dataset.t;
+      pendingTimed.slice(1).forEach((f) => timers.push(setTimeout(() => show(s, f), +f.dataset.t - base)));
+      return;
+    }
+    const hidden = frags(s).filter((f) => !f.classList.contains("on"));
+    if (hidden.length) { show(s, hidden[0]); return; }
+    if (index < slides.length - 1) { lockFor(); go(index + 1); }
+  }
+
+  function prev() {
+    if (lock) return;
+    const s = slides[index];
+    const shown = frags(s).filter((f) => f.classList.contains("on"));
+    if (shown.length) { hide(s, shown[shown.length - 1]); return; }
+    if (index > 0) { lockFor(); go(index - 1, true); }
+  }
+  function lockFor() { lock = true; setTimeout(() => (lock = false), 700); }
+
+  /* ---------- chrome ---------- */
+  slides.forEach((s, i) => {
+    const b = document.createElement("button");
+    b.title = `${s.dataset.scene} — ${s.dataset.title}`;
+    b.setAttribute("aria-label", b.title);
+    b.addEventListener("click", (e) => { e.stopPropagation(); go(i, true); });
+    progress.appendChild(b);
+  });
+
+  const grid = overview.querySelector(".grid");
+  slides.forEach((s, i) => {
+    const b = document.createElement("button");
+    b.className = "scene";
+    b.innerHTML = `<small>SC. ${s.dataset.scene}</small><span>${s.dataset.title}</span>`;
+    b.addEventListener("click", () => { toggleOverview(false); go(i, true); });
+    grid.insertBefore(b, grid.querySelector(".hint"));
+  });
+
+  function updateChrome() {
+    [...progress.children].forEach((b, i) => {
+      b.classList.toggle("done", i < index);
+      b.classList.toggle("current", i === index);
+    });
+    [...grid.querySelectorAll(".scene")].forEach((b, i) => b.classList.toggle("current", i === index));
+    counter.textContent = `SC. ${slides[index].dataset.scene} / ${String(slides.length).padStart(2, "0")}`;
+    const n = slides[index].querySelector(".notes");
+    notesEl.innerHTML = `<h4>Presenter notes — Scene ${slides[index].dataset.scene} · ${slides[index].dataset.title}</h4>` +
+      (n ? n.innerHTML : "<p>No notes.</p>");
+  }
+
+  function toggleNotes(force) {
+    const open = force ?? !notesEl.classList.contains("open");
+    notesEl.classList.toggle("open", open);
+    document.getElementById("btn-notes")?.setAttribute("aria-pressed", open);
+  }
+  function toggleOverview(force) {
+    const open = force ?? !overview.classList.contains("open");
+    overview.classList.toggle("open", open);
+  }
+  function toggleFull() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+    else document.exitFullscreen?.();
+  }
+  function toggleSound() {
+    soundOn = !soundOn;
+    const sb = document.getElementById("btn-sound");
+    if (sb) { sb.setAttribute("aria-pressed", soundOn); sb.textContent = soundOn ? "Sound on" : "Sound off"; }
+    if (!soundOn) Ring.stop();
+  }
+
+  document.getElementById("btn-notes")?.addEventListener("click", (e) => { e.stopPropagation(); toggleNotes(); });
+  document.getElementById("btn-scenes")?.addEventListener("click", (e) => { e.stopPropagation(); toggleOverview(); });
+  document.getElementById("btn-full")?.addEventListener("click", (e) => { e.stopPropagation(); toggleFull(); });
+  document.getElementById("btn-sound")?.addEventListener("click", (e) => { e.stopPropagation(); toggleSound(); });
+  document.getElementById("btn-prev")?.addEventListener("click", (e) => { e.stopPropagation(); prev(); });
+  document.getElementById("btn-next")?.addEventListener("click", (e) => { e.stopPropagation(); next(); });
+
+  /* ---------- input ---------- */
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea, select")) return;
+    if (overview.classList.contains("open") && e.key !== "o" && e.key !== "O" && e.key !== "Escape") return;
+    switch (e.key) {
+      case "ArrowRight": case "PageDown": case " ": case "Enter": e.preventDefault(); next(); break;
+      case "ArrowLeft": case "PageUp": case "Backspace": e.preventDefault(); prev(); break;
+      case "Home": go(0); break;
+      case "End": go(slides.length - 1, true); break;
+      case "f": case "F": toggleFull(); break;
+      case "Escape": toggleOverview(false); toggleNotes(false); break;
+      case "m": case "M": toggleSound(); break;
+    }
+  });
+
+  document.getElementById("viewport").addEventListener("click", (e) => {
+    if (e.target.closest("button, a, input, select, [data-interactive], .hit")) return;
+    if (e.clientX < window.innerWidth * 0.3) prev(); else next();
+  });
+
+  let tx = null;
+  document.addEventListener("touchstart", (e) => { tx = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener("touchend", (e) => {
+    if (tx === null) return;
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) (dx < 0 ? next : prev)();
+    tx = null;
+  });
+
+  /* ---------- sound: a synthesized European ring tone (425 Hz), no files ---------- */
+  const Ring = {
+    ctx: null, nodes: [],
+    play(times = 2) {
+      if (!soundOn) return;
+      try {
+        this.ctx = this.ctx || new (window.AudioContext || window.webkitAudioContext)();
+        const t0 = this.ctx.currentTime + 0.05;
+        for (let k = 0; k < times; k++) {
+          const start = t0 + k * 3;
+          const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+          o.frequency.value = 425; o.type = "sine";
+          g.gain.setValueAtTime(0, start);
+          g.gain.linearRampToValueAtTime(0.12, start + 0.03);
+          g.gain.setValueAtTime(0.12, start + 1.2);
+          g.gain.linearRampToValueAtTime(0, start + 1.25);
+          o.connect(g).connect(this.ctx.destination);
+          o.start(start); o.stop(start + 1.3);
+          this.nodes.push(o);
+        }
+      } catch (err) { /* audio not available: stay silent */ }
+    },
+    stop() { this.nodes.forEach((n) => { try { n.stop(); } catch (e) {} }); this.nodes = []; },
+  };
+  window.Ring = Ring;
+
+  /* ---------- start ---------- */
+  const start = parseInt(location.hash.slice(1), 10);
+  go(Number.isFinite(start) && start > 0 ? Math.min(start, slides.length) - 1 : 0, Number.isFinite(start) && start > 1);
+  window.DECK = { go, next, prev, count: slides.length };
+})();
+
+</script>
+</body>
+</html>

@@ -11,3 +11,6 @@ data/bank-additional-full.csv
 
 # Created by training
 tuner_logs/
+
+# Presentation sources (only the three built HTML files are committed)
+Churn_Story_Presentation/_source/

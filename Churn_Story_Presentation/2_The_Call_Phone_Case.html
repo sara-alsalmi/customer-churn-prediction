@@ -1,0 +1,1987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Call (Case File)</title>
+<meta name="description" content="An interactive, sound-enabled presentation of our deep learning project on the UCI Bank Marketing dataset: predicting which clients will subscribe to a term deposit.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Silkscreen:wght@400;700&family=Young+Serif&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   THE CALL — "agent's desk" design system
+   Every scene is an object on a 2008 call-centre desk: the phone, a case file,
+   a printed call list, a cork board, a CRT terminal, ID badges, an LCD
+   scoreboard, a time card. Orange (ember) always means "yes".
+   ========================================================================== */
+:root {
+  --desk: #1d1915; --desk-2: #2a241e; --desk-3: #14110e;
+  --paper: #f4ecdd; --paper-2: #e9dfca; --paper-line: #cdbfa5;
+  --ink: #221c15; --ink-2: #5e5345; --ink-3: #8b7f6c;
+  --cream: #f4ecdd; --cream-2: #c9bfae; --cream-3: #8f8574;
+  --lcd: #a7b892; --lcd-2: #93a57e; --pix: #1f2a18; --pix-2: #4b5a3c;
+  --crt: #0c140d; --phos: #8fe08a; --phos-2: #4f8f4c;
+  --body: #d9d2c3; --body-2: #b9b1a1;
+  --green: #3fa34d; --red: #d2453b; --ember: #f07a3e; --ember-d: #d9581f; --note: #ffd76a; --cork: #b8865a; --sim: #d2453b;
+  --serif: "Young Serif", Georgia, serif;
+  --pixel: "VT323", Consolas, monospace;
+  --label: "Silkscreen", Consolas, monospace;
+  --type: "Courier Prime", "Courier New", monospace;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --pop: cubic-bezier(.2, 1.6, .4, 1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: #000; overflow: hidden; }
+body { font-family: var(--serif); color: var(--cream); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+#viewport { position: fixed; inset: 0; background: #000; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; }
+
+/* every scene sits on the desk */
+.slide { position: absolute; inset: 0; opacity: 0; visibility: hidden; overflow: hidden;
+  transition: opacity .7s var(--ease), visibility 0s linear .7s;
+  background: radial-gradient(70% 60% at 40% 40%, rgba(255,190,120,.10), transparent 70%),
+              repeating-linear-gradient(90deg, var(--desk) 0 60px, var(--desk-2) 60px 62px, var(--desk) 62px 140px); }
+.slide.active { opacity: 1; visibility: visible; transition: opacity .7s var(--ease), visibility 0s; z-index: 2; }
+.slide::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 60; box-shadow: inset 0 0 220px rgba(0,0,0,.55); }
+.slide .notes { display: none; }
+
+/* scene label — a strip of label-maker tape */
+.tape { position: absolute; left: 70px; top: 46px; z-index: 50; font: 400 16px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
+  background: #151210; color: #e9e0d0; padding: 10px 14px 9px; transform: rotate(-1.2deg); box-shadow: 0 3px 0 rgba(0,0,0,.35); }
+.tape b { color: var(--ember); font-weight: 400; margin-right: 10px; }
+
+.h1 { font: 400 96px/1 var(--serif); letter-spacing: -.01em; }
+.h1 em, .ember { color: var(--ember); font-style: normal; }
+.lede { font: 400 28px/1.45 var(--serif); color: var(--cream-2); }
+.small-label { font: 400 15px/1 var(--label); letter-spacing: .14em; text-transform: uppercase; color: var(--cream-3); }
+
+/* fragments */
+.f { opacity: 0; transform: translateY(16px); transition: opacity .6s var(--ease), transform .6s var(--ease); }
+.f.on { opacity: 1; transform: none; }
+.f.pop { transform: scale(.6) rotate(var(--rot, 0deg)); transition: opacity .25s, transform .5s var(--pop); }
+.f.pop.on { transform: scale(1) rotate(var(--rot, 0deg)); }
+i.f[hidden] { display: none; }
+
+/* sticky notes & paper */
+.sticky { position: absolute; background: var(--note); color: #3a2c12; font: 400 30px/1.15 var(--pixel); padding: 24px 24px 26px; box-shadow: 0 16px 30px rgba(0,0,0,.45); transform: rotate(var(--rot, 3deg)); z-index: 6; }
+.sticky::before { content: ""; position: absolute; left: 50%; top: -12px; width: 90px; height: 26px; transform: translateX(-50%) rotate(-3deg); background: rgba(255,255,255,.45); }
+.sticky b { color: #b23d12; font-weight: 400; }
+.sticky.pink { background: #ffb3b3; } .sticky.blue { background: #bfe0ff; } .sticky.green { background: #c7efb0; }
+
+/* ---------- chrome ---------- */
+#chrome { position: fixed; inset: 0; pointer-events: none; z-index: 100; }
+#progress { position: absolute; left: 0; right: 0; bottom: 0; height: 22px; display: flex; gap: 3px; padding: 0 3px 6px; pointer-events: auto; align-items: flex-end; }
+#progress button { flex: 1; height: 4px; background: rgba(244,236,221,.15); border-radius: 2px; transition: height .2s; }
+#progress button.done { background: rgba(240,122,62,.5); }
+#progress button.current { background: var(--ember); }
+#progress button:hover { height: 9px; }
+#controls { position: absolute; right: 16px; bottom: 30px; display: flex; gap: 6px; pointer-events: auto; opacity: .4; transition: opacity .3s; }
+#controls:hover { opacity: 1; }
+#controls button { font: 400 11px/1 var(--label); letter-spacing: .08em; text-transform: uppercase; padding: 9px 11px; border-radius: 4px; background: rgba(20,17,14,.85); color: #eee6d6; border: 1px solid rgba(255,255,255,.14); }
+#controls button[aria-pressed="true"] { color: var(--ember); border-color: var(--ember); }
+#counter { position: absolute; left: 16px; bottom: 32px; font: 400 11px/1 var(--label); letter-spacing: .12em; text-transform: uppercase; color: rgba(244,236,221,.5); }
+#notes { position: absolute; left: 50%; bottom: 40px; transform: translate(-50%, 20px); width: min(1100px, calc(100vw - 32px)); max-height: 38vh; overflow: auto;
+  background: rgba(15,13,11,.95); color: #eee6d6; border: 1px solid #3a352d; border-radius: 10px; padding: 22px 26px; font: 17px/1.55 Georgia, serif; pointer-events: auto; opacity: 0; visibility: hidden; transition: .3s var(--ease); }
+#notes.open { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+#notes h4 { font: 400 12px/1 var(--label); letter-spacing: .14em; text-transform: uppercase; color: var(--ember); margin-bottom: 12px; }
+#notes p { margin-bottom: 10px; }
+#overview { position: absolute; inset: 0; background: rgba(12,10,8,.96); pointer-events: auto; display: grid; place-items: center; opacity: 0; visibility: hidden; transition: .35s var(--ease); }
+#overview.open { opacity: 1; visibility: visible; }
+#overview .grid { display: grid; grid-template-columns: repeat(5, minmax(0, 220px)); gap: 14px; padding: 16px; }
+#overview .scene { text-align: left; padding: 20px 18px 24px; border-radius: 6px; color: #3a2c12; background: var(--note); transform: rotate(-1deg); transition: transform .2s var(--pop); }
+#overview .scene:nth-child(even) { transform: rotate(1.4deg); }
+#overview .scene:hover, #overview .scene.current { transform: rotate(0) scale(1.05); outline: 3px solid var(--ember); }
+#overview .scene small { display: block; font: 400 12px/1 var(--label); letter-spacing: .14em; margin-bottom: 12px; color: #b23d12; }
+#overview .scene span { font: 400 26px/1.05 var(--serif); }
+#overview .hint { grid-column: 1 / -1; color: #8f8574; font: 12px/1.6 var(--label); margin-top: 10px; letter-spacing: .06em; }
+@media (max-width: 900px) { #overview .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+#tip { position: absolute; z-index: 90; pointer-events: none; padding: 10px 14px; border-radius: 6px; background: #16130f; color: #f1ece2; font: 18px/1.4 Georgia, serif; box-shadow: 0 8px 30px rgba(0,0,0,.4); opacity: 0; transition: opacity .12s; white-space: nowrap; }
+#tip b { font: 400 24px/1 var(--pixel); color: var(--ember); }
+#tip.show { opacity: 1; }
+
+/* confetti */
+.conf { position: absolute; width: 14px; height: 22px; border-radius: 3px; pointer-events: none; z-index: 80; animation: conf 1.6s cubic-bezier(.2,.6,.4,1) forwards; }
+@keyframes conf { to { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; } }
+
+/* ======================================================================
+   01 — THE SHIFT (the phone game)
+   ====================================================================== */
+.phone { position: absolute; left: 210px; top: 90px; width: 620px; height: 900px; border-radius: 120px 120px 90px 90px; z-index: 3;
+  background: linear-gradient(160deg, #e6dfd0, var(--body) 40%, var(--body-2)); box-shadow: inset 0 -14px 0 rgba(0,0,0,.12), 0 40px 80px rgba(0,0,0,.55); }
+.phone.vibrate { animation: vib .07s linear infinite; }
+@keyframes vib { 25% { transform: translate(3px,-2px) rotate(.6deg); } 75% { transform: translate(-3px,2px) rotate(-.6deg); } }
+.speaker { position: absolute; left: 50%; top: 44px; transform: translateX(-50%); width: 140px; height: 12px; border-radius: 6px; background: repeating-linear-gradient(90deg, #7c7466 0 6px, transparent 6px 12px); }
+.brand { position: absolute; left: 0; right: 0; top: 70px; text-align: center; font: 700 18px/1 var(--label); letter-spacing: .3em; color: #8a8273; }
+.lcd { position: absolute; left: 60px; right: 60px; top: 110px; height: 420px; border-radius: 22px; background: var(--lcd); color: var(--pix);
+  box-shadow: inset 0 6px 18px rgba(0,0,0,.35), 0 0 0 10px #3b3a35; padding: 26px 30px; overflow: hidden; font-family: var(--pixel); }
+.lcd::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.05) 0 2px, transparent 2px 4px); pointer-events: none; }
+.lcd .bar { display: flex; justify-content: space-between; font-size: 30px; border-bottom: 3px solid var(--pix); padding-bottom: 6px; margin-bottom: 16px; }
+.lcd .main { font-size: 44px; line-height: 1.05; }
+.lcd .big { font-size: 130px; line-height: .9; letter-spacing: .02em; }
+.lcd .row { display: flex; justify-content: space-between; font-size: 34px; line-height: 1.12; }
+.lcd .row span:first-child { color: var(--pix-2); }
+.lcd .react { font-size: 38px; margin-top: 10px; }
+.lcd .tag { display: inline-block; background: var(--pix); color: var(--lcd); padding: 0 8px; font-size: 26px; }
+.blink { animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.lcd.flash { animation: flash .12s steps(1) infinite; }
+@keyframes flash { 50% { background: var(--lcd-2); } }
+.keys { position: absolute; left: 80px; right: 80px; top: 580px; display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+.key { height: 110px; border-radius: 60px; font: 700 30px/1 var(--label); letter-spacing: .12em; color: #fff; box-shadow: 0 10px 0 rgba(0,0,0,.28); transition: transform .08s, box-shadow .08s; }
+.key:active, .key.press { transform: translateY(8px); box-shadow: 0 2px 0 rgba(0,0,0,.28); }
+.key.call { background: var(--green); } .key.end { background: var(--red); }
+.key:disabled { filter: grayscale(.7) brightness(.8); cursor: default; }
+.pad { position: absolute; left: 110px; right: 110px; top: 740px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 30px; }
+.pad button { height: 34px; border-radius: 17px; background: #c9c1b1; box-shadow: 0 5px 0 rgba(0,0,0,.18); font: 700 18px/34px var(--label); color: #6d6557; text-align: center; transition: transform .08s, box-shadow .08s; }
+.pad button.press, .pad button:active { transform: translateY(4px); box-shadow: 0 1px 0 rgba(0,0,0,.18); }
+
+.game-title { position: absolute; left: 960px; top: 110px; font: 400 92px/1 var(--serif); }
+.game-title em { color: var(--ember); font-style: normal; }
+.game-sub { position: absolute; left: 964px; top: 224px; font: 400 26px/1.45 var(--serif); color: var(--cream-2); width: 820px; }
+.board { position: absolute; left: 960px; top: 350px; width: 860px; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 3px solid var(--cream); }
+.stat { padding: 26px 0 10px 24px; border-right: 1px solid rgba(244,236,221,.18); }
+.stat:first-child { padding-left: 0; } .stat:last-child { border-right: 0; }
+.stat small { display: block; font: 400 15px/1 var(--label); letter-spacing: .14em; color: #a99f8e; margin-bottom: 14px; }
+.stat b { font: 400 96px/1 var(--pixel); font-variant-numeric: tabular-nums; }
+.stat.yes b { color: var(--ember); }
+.log { position: absolute; left: 960px; top: 570px; width: 860px; display: flex; flex-wrap: wrap; gap: 10px; }
+.log i { width: 46px; height: 46px; border-radius: 50%; background: #4a433a; display: grid; place-items: center; font: 400 26px/1 var(--pixel); font-style: normal; color: #c9bfae; animation: drop .35s var(--pop) both; }
+.log i.y { background: var(--ember); color: #fff; }
+@keyframes drop { from { transform: scale(0); } }
+.auto { position: absolute; left: 960px; top: 810px; font: 700 22px/1 var(--label); letter-spacing: .12em; color: var(--desk); background: var(--cream); padding: 22px 28px; border-radius: 8px; opacity: 0; pointer-events: none; transform: translateY(20px); transition: .4s var(--pop); box-shadow: 0 8px 0 rgba(0,0,0,.35); }
+.auto.show { opacity: 1; pointer-events: auto; transform: none; }
+.auto:hover { background: var(--ember); color: #fff; }
+.s01 .sticky { left: 70px; top: 800px; width: 260px; --rot: -7deg; }
+.fine { position: absolute; left: 964px; bottom: 60px; font: 400 14px/1.45 var(--label); letter-spacing: .05em; color: #8f8574; width: 800px; }
+.finale { position: absolute; inset: 0; background: #0f0c0a; display: grid; place-items: center; text-align: center; opacity: 0; pointer-events: none; transition: opacity .9s; z-index: 30; }
+.finale.on { opacity: 1; pointer-events: auto; }
+.finale .l1 { font: 400 160px/0.95 var(--pixel); color: var(--ember); }
+.finale .l2 { font: 400 46px/1.3 var(--serif); margin-top: 26px; color: #e9e0d0; }
+.finale .l3 { font: 400 92px/1.05 var(--serif); margin-top: 80px; opacity: 0; transform: translateY(20px); transition: 1s .2s; }
+.finale .l3 em { color: var(--ember); font-style: normal; }
+.finale.q .l3 { opacity: 1; transform: none; }
+
+/* ======================================================================
+   02 — THE CASE FILE
+   ====================================================================== */
+.memo2 { position: absolute; left: 120px; top: 120px; width: 860px; height: 860px; background: var(--paper); color: var(--ink); padding: 90px 70px 60px;
+  box-shadow: 0 40px 80px rgba(0,0,0,.5); transform: translateY(1100px) rotate(-1.5deg); transition: transform 1.1s var(--ease); z-index: 3;
+  background-image: repeating-linear-gradient(180deg, transparent 0 51px, #e3d7c0 51px 52px); background-position: 0 30px; }
+.memo2.in { transform: rotate(-1.5deg); }
+.m-clip { position: absolute; left: 50%; top: -26px; width: 260px; height: 70px; transform: translateX(-50%); background: linear-gradient(180deg, #b9bec4, #8d939a); border-radius: 12px 12px 6px 6px; box-shadow: 0 8px 14px rgba(0,0,0,.35); }
+.m-head { font: 400 16px/1 var(--label); letter-spacing: .16em; color: var(--ink-3); }
+.m-title { font: 400 120px/0.95 var(--serif); margin: 26px 0 30px; letter-spacing: -.02em; }
+.m-title em, .m-def em { color: var(--ember-d); font-style: normal; }
+.m-def { font: 400 34px/1.4 var(--serif); margin-bottom: 40px; }
+.facts { font-family: var(--type); }
+.facts div { display: grid; grid-template-columns: 150px 1fr; gap: 16px; font-size: 25px; line-height: 52px; }
+.facts dt { color: var(--ink-3); text-transform: uppercase; font-size: 19px; letter-spacing: .1em; }
+.how-title { position: absolute; left: 1100px; top: 120px; font: 400 18px/1 var(--label); letter-spacing: .18em; text-transform: uppercase; color: var(--cream-3); }
+.flow { position: absolute; left: 1100px; top: 165px; width: 700px; display: flex; flex-direction: column; align-items: stretch; }
+.fstep { background: var(--desk-2); border: 2px solid rgba(244,236,221,.18); border-radius: 14px; padding: 22px 28px; }
+.fstep small { display: block; font: 400 15px/1 var(--label); letter-spacing: .16em; color: var(--ember); margin-bottom: 10px; }
+.fstep b { display: block; font: 400 46px/1.05 var(--serif); font-weight: 400; }
+.fstep span { display: block; font: 400 22px/1.4 var(--type); color: var(--cream-2); margin-top: 6px; }
+.fstep.out { background: var(--lcd); color: var(--pix); border-color: #3b3a35; }
+.fstep.out b { font: 400 76px/1 var(--pixel); }
+.fstep.out span, .fstep.out small { color: var(--pix); font-family: var(--pixel); font-size: 30px; }
+.fstep.out small { font-size: 22px; }
+.stamp { position: absolute; left: 620px; top: 868px; z-index: 8; font: 400 34px/1.1 var(--label); letter-spacing: .08em; color: var(--red); border: 6px solid var(--red); padding: 16px 24px; border-radius: 8px; text-align: center;
+  transform: rotate(-10deg) scale(2.4); opacity: 0; mix-blend-mode: multiply; transition: transform .25s cubic-bezier(.5,0,.6,1.4), opacity .1s; }
+.stamp.on { transform: rotate(-10deg) scale(1); opacity: .88; }
+.stamp small { display: block; font-size: 15px; letter-spacing: .06em; margin-top: 6px; }
+.s02 .sticky { left: 1380px; top: 860px; width: 420px; --rot: 3deg; font-size: 30px; }
+.farrow { text-align: center; font: 400 44px/1 var(--serif); color: var(--ember); padding: 8px 0; }
+
+/* ======================================================================
+   03 — THE CALL LIST (green-bar printer paper)
+   ====================================================================== */
+.printer { position: absolute; left: 110px; top: 70px; width: 980px; height: 120px; background: linear-gradient(180deg, #d9d2c3, #b9b1a1); border-radius: 14px 14px 6px 6px; z-index: 5; box-shadow: 0 20px 40px rgba(0,0,0,.45); }
+.printer::before { content: ""; position: absolute; left: 60px; right: 60px; bottom: 18px; height: 14px; background: #2b2722; border-radius: 7px; }
+.printer span { position: absolute; left: 30px; top: 22px; font: 400 15px/1 var(--label); letter-spacing: .2em; color: #6d6557; }
+.printer i { position: absolute; right: 34px; top: 24px; width: 14px; height: 14px; border-radius: 50%; background: #3fa34d; box-shadow: 0 0 10px #3fa34d; }
+.printer.busy i { animation: blink .3s steps(1) infinite; }
+.sheet-wrap { position: absolute; left: 150px; top: 172px; width: 900px; height: 880px; overflow: hidden; z-index: 4; }
+.sheet { position: absolute; left: 0; right: 0; top: 0; padding: 30px 70px 40px; color: #222; font: 400 22px/40px var(--type);
+  background: repeating-linear-gradient(180deg, #e8f1df 0 80px, #f8f6ef 80px 160px); transform: translateY(-100%); transition: transform 1.8s steps(18); box-shadow: 0 20px 40px rgba(0,0,0,.4); }
+.sheet::before, .sheet::after { content: ""; position: absolute; top: 0; bottom: 0; width: 34px; background: radial-gradient(circle at 17px 20px, var(--desk) 7px, #f3f0e6 8px) 0 0 / 34px 40px; }
+.sheet::before { left: 0; } .sheet::after { right: 0; }
+.sheet.printed { transform: translateY(0); }
+.sheet .hdr { font-weight: 700; letter-spacing: .04em; border-bottom: 2px dashed #777; margin-bottom: 4px; }
+.sheet .r { display: grid; grid-template-columns: 90px 60px 200px 130px 70px 150px 70px; white-space: nowrap; }
+.sheet .r .y1 { color: #fff; background: var(--ember); text-align: center; border-radius: 4px; }
+.sheet .r.yes { background: rgba(240,122,62,.18); }
+.sheet .more { color: #777; margin-top: 6px; }
+.list-big { position: absolute; left: 1170px; top: 110px; }
+.list-big .lcd-tile { background: var(--lcd); color: var(--pix); border-radius: 16px; padding: 22px 30px; box-shadow: inset 0 6px 16px rgba(0,0,0,.3), 0 0 0 8px #3b3a35, 0 20px 40px rgba(0,0,0,.4); width: 640px; font-family: var(--pixel); }
+.lcd-tile .k { font-size: 30px; }
+.lcd-tile .v { font-size: 190px; line-height: .85; }
+.lcd-tile .s { font-size: 32px; }
+.groups { position: absolute; left: 1170px; top: 470px; width: 640px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.group { background: var(--paper); color: var(--ink); padding: 16px 18px 18px; border-radius: 4px; box-shadow: 0 10px 20px rgba(0,0,0,.35); position: relative; }
+.group::before { content: ""; position: absolute; left: 18px; top: -14px; width: 90px; height: 16px; background: var(--c, #9bc4e2); border-radius: 4px 4px 0 0; }
+.group h4 { font: 400 26px/1 var(--serif); display: flex; justify-content: space-between; }
+.group h4 span { font: 400 30px/1 var(--pixel); color: var(--ink-3); }
+.group p { font: 400 17px/1.45 var(--type); color: var(--ink-2); margin-top: 8px; }
+.group p s { color: var(--red); }
+.s03 .sticky.a { left: 1220px; top: 830px; width: 270px; --rot: -4deg; }
+.s03 .sticky.b { left: 1540px; top: 800px; width: 280px; --rot: 5deg; }
+
+/* ======================================================================
+   04 — THE CLUES (cork board)
+   ====================================================================== */
+.s04-head { position: absolute; left: 90px; top: 120px; }
+.s04-hint { position: absolute; left: 94px; top: 228px; font: 400 15px/1 var(--label); letter-spacing: .14em; text-transform: uppercase; color: var(--cream-3); }
+.clue { position: absolute; width: 560px; height: 330px; background: var(--paper); color: var(--ink); padding: 26px 30px 20px; border-radius: 6px; box-shadow: 0 14px 24px rgba(0,0,0,.4); transition: transform .3s var(--pop), box-shadow .3s; z-index: 3; text-align: left; display: flex; flex-direction: column; }
+.clue:hover { transform: translateY(-6px); z-index: 4; }
+.clue.on { outline: 4px solid var(--ember); }
+.clue small { display: block; font: 400 13px/1 var(--label); letter-spacing: .14em; color: var(--ember-d); margin-bottom: 10px; }
+.clue h4 { font: 400 30px/1.1 var(--serif); font-weight: 400; }
+.clue .c-big { font: 400 84px/1 var(--pixel); color: var(--ember-d); margin-top: 10px; }
+.clue .c-note { font: 400 19px/1.3 var(--type); color: var(--ink-2); }
+.clue svg { width: 100%; height: 56px; margin-top: auto; }
+.clue-detail { position: absolute; left: 370px; top: 200px; width: 1180px; height: 800px; background: var(--paper); color: var(--ink); z-index: 10; padding: 44px 54px;
+  box-shadow: 0 40px 80px rgba(0,0,0,.6); transform: translateY(40px) scale(.9) rotate(1deg); opacity: 0; pointer-events: none; transition: transform .5s var(--pop), opacity .3s; }
+.clue-detail.open { transform: none; opacity: 1; pointer-events: auto; }
+.clue-detail .d-num { font: 400 15px/1 var(--label); letter-spacing: .16em; color: var(--ink-3); }
+.clue-detail h3 { font: 400 64px/1.02 var(--serif); margin: 12px 0 10px; font-weight: 400; }
+.clue-detail h3 em { color: var(--ember-d); font-style: normal; }
+.clue-detail p { font: 400 22px/1.45 var(--type); color: var(--ink-2); max-width: 1000px; }
+.clue-detail svg { position: absolute; left: 54px; right: 54px; bottom: 40px; width: calc(100% - 108px); height: 440px; }
+.clue-detail .close { position: absolute; right: 22px; top: 18px; font: 400 14px/1 var(--label); letter-spacing: .12em; color: var(--ink-3); }
+.chart-label { fill: var(--ink-2); font: 400 20px var(--type); }
+.chart-val { fill: var(--ink); font: 400 30px var(--pixel); }
+.chart-ref { stroke: var(--ink); stroke-width: 2; stroke-dasharray: 8 8; opacity: .55; }
+.chart-ref-label { fill: var(--ink); font: 400 24px var(--pixel); paint-order: stroke; stroke: var(--paper); stroke-width: 8px; stroke-linejoin: round; }
+.bar { transition: width .8s var(--ease), height .8s var(--ease), y .8s var(--ease); }
+.hit { fill: transparent; }
+
+/* ======================================================================
+   05 — THE CLEAN-UP (CRT terminal)
+   ====================================================================== */
+.crt { position: absolute; left: 90px; top: 110px; width: 1160px; height: 860px; border-radius: 40px; padding: 46px; background: linear-gradient(160deg, #d9d2c3, #b3aa98); box-shadow: 0 40px 80px rgba(0,0,0,.55), inset 0 -10px 0 rgba(0,0,0,.12); }
+.crt::after { content: "BANCO-PC 2008"; position: absolute; left: 60px; bottom: 14px; font: 400 14px/1 var(--label); letter-spacing: .2em; color: #7a7262; }
+.screen { position: relative; width: 100%; height: 100%; border-radius: 26px; background: var(--lcd); overflow: hidden; padding: 30px 46px; box-shadow: inset 0 6px 18px rgba(0,0,0,.35), 0 0 0 10px #3b3a35; }
+.screen::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.05) 0 2px, transparent 2px 4px); pointer-events: none; z-index: 2; }
+@keyframes flick { 50% { opacity: .6; } }
+.term { font: 400 31px/1.18 var(--pixel); color: var(--pix); }
+.term .cmd::before { content: "> "; color: var(--pix-2); }
+.term .out { color: var(--pix-2); padding-left: 32px; margin-bottom: 4px; }
+.term .warn { color: #a3260f; padding-left: 32px; }
+.term .why { color: #a3260f; padding-left: 32px; margin-bottom: 6px; }
+.term .cursor { display: inline-block; width: 16px; height: 28px; background: var(--pix); vertical-align: -4px; animation: blink 1s steps(1) infinite; }
+.gauge { position: absolute; left: 1330px; top: 130px; width: 500px; }
+.gauge h3 { font: 400 15px/1 var(--label); letter-spacing: .16em; color: var(--cream-3); margin-bottom: 10px; font-weight: 400; }
+.gauge .num { font: 400 130px/0.9 var(--pixel); color: var(--cream); font-variant-numeric: tabular-nums; }
+.gauge .cols { font: 400 40px/1 var(--pixel); color: var(--cream-2); margin-top: 8px; }
+.steps-list { margin-top: 36px; display: grid; gap: 8px; }
+.steps-list div { display: flex; gap: 14px; align-items: center; font: 400 22px/1.2 var(--serif); color: var(--cream-3); transition: color .3s; }
+.steps-list div i { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--cream-3); flex: none; display: grid; place-items: center; font: 400 22px/1 var(--pixel); font-style: normal; }
+.steps-list div.done { color: var(--cream); }
+.steps-list div.done i::after { content: "✓"; }
+.steps-list div.done i { background: var(--green); border-color: var(--green); color: #fff; }
+.steps-list div.done.cut i { background: var(--ember); border-color: var(--ember); }
+.split-bar { margin-top: 30px; display: flex; height: 60px; border-radius: 8px; overflow: hidden; opacity: 0; transform: scaleX(0); transform-origin: left; transition: .9s var(--ease); }
+.split-bar.on { opacity: 1; transform: none; }
+.split-bar div { display: grid; place-items: center; font: 400 26px/1 var(--pixel); color: #fff; }
+
+/* ======================================================================
+   06 — THE TRAINEES (ID badges)
+   ====================================================================== */
+.memo { position: absolute; left: 90px; top: 120px; width: 1740px; display: flex; align-items: center; gap: 30px; z-index: 3; }
+.memo .h1 { font-size: 80px; white-space: nowrap; }
+.memo ul { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.memo li { font: 400 14px/1 var(--label); letter-spacing: .06em; padding: 9px 12px; background: var(--paper); color: var(--ink); border-radius: 3px; transform: rotate(var(--rot, 0deg)); box-shadow: 0 4px 8px rgba(0,0,0,.3); }
+.rail { position: absolute; left: 60px; right: 60px; top: 330px; height: 14px; background: linear-gradient(#8a8f95, #5a5f66); border-radius: 7px; box-shadow: 0 6px 10px rgba(0,0,0,.4); }
+.badges { position: absolute; left: 110px; right: 110px; top: 330px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 30px; }
+.badge-hang { position: relative; height: 700px; transform-origin: 50% 0; animation: sway 4s ease-in-out infinite; animation-delay: var(--d); }
+@keyframes sway { 50% { transform: rotate(1.6deg); } }
+.badge-hang::before { content: ""; position: absolute; left: 50%; top: 0; width: 6px; height: 90px; background: var(--ember); transform: translateX(-50%); }
+.badge { position: absolute; left: 0; right: 0; top: 90px; height: 560px; perspective: 1600px; cursor: pointer; }
+.badge .in { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform .7s var(--pop); }
+.badge.flipped .in { transform: rotateY(180deg); }
+.badge .face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 18px; background: var(--paper); color: var(--ink); padding: 34px 24px 24px; box-shadow: 0 24px 40px rgba(0,0,0,.5); overflow: hidden; }
+.badge .face::before { content: ""; position: absolute; left: 50%; top: 14px; width: 60px; height: 10px; border-radius: 5px; background: var(--desk); transform: translateX(-50%); }
+.badge .front .band { position: absolute; left: 0; right: 0; top: 40px; height: 54px; background: var(--c); display: flex; align-items: center; padding: 0 22px; font: 400 15px/1 var(--label); letter-spacing: .2em; color: #fff; }
+.badge .front .pic { margin: 90px auto 18px; width: 190px; height: 170px; border-radius: 10px; background: #2a241e; display: grid; place-items: center; }
+.badge .front .pic svg { width: 160px; height: 120px; }
+.badge .front .nm { font: 400 18px/1 var(--label); letter-spacing: .16em; color: var(--ink-3); text-align: center; }
+.badge .front .tt { font: 400 34px/1.05 var(--serif); text-align: center; margin-top: 10px; min-height: 72px; }
+.badge .front .st { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%) rotate(-4deg); font: 400 15px/1 var(--label); letter-spacing: .1em; padding: 10px 14px; border: 3px solid currentColor; border-radius: 6px; white-space: nowrap; color: var(--ink-3); }
+.badge .front .st.go { color: var(--green); }
+.badge .front .st.ready { color: var(--ember-d); }
+.badge .back { transform: rotateY(180deg); padding: 40px 22px 20px; }
+.badge .back h5 { font: 400 26px/1.05 var(--serif); font-weight: 400; margin-bottom: 10px; }
+.badge .back p { font: 400 15px/1.35 var(--type); color: var(--ink-2); margin-bottom: 12px; }
+.badge .back dl { font: 400 13.5px/1.3 var(--type); }
+.badge .back dt { font: 400 11px/1 var(--label); letter-spacing: .12em; color: var(--ink-3); margin-top: 8px; }
+.badge .back .out { margin-top: 12px; font: 400 14px/1.3 var(--type); border-top: 2px dashed var(--paper-line); padding-top: 10px; }
+.badge .back .out b { color: var(--ember-d); font-weight: 400; }
+.flip-hint { position: absolute; left: 0; right: 0; bottom: 34px; text-align: center; font: 400 14px/1 var(--label); letter-spacing: .14em; color: var(--cream-3); }
+
+/* ======================================================================
+   07 — THE SCOREBOARD
+   ====================================================================== */
+.sb { position: absolute; left: 90px; top: 200px; width: 1090px; height: 640px; border-radius: 26px; background: #2b2722; padding: 30px; box-shadow: 0 40px 80px rgba(0,0,0,.55); }
+.sb .lcd-wide { width: 100%; height: 100%; border-radius: 16px; background: var(--lcd); color: var(--pix); box-shadow: inset 0 8px 20px rgba(0,0,0,.35); padding: 26px 34px; font-family: var(--pixel); position: relative; overflow: hidden; }
+.sb .lcd-wide::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.05) 0 2px, transparent 2px 4px); pointer-events: none; }
+.sb .top { display: flex; justify-content: space-between; font-size: 34px; border-bottom: 3px solid var(--pix); padding-bottom: 6px; margin-bottom: 14px; }
+.sb-row { display: grid; grid-template-columns: 330px 1fr 120px; align-items: center; height: 76px; font-size: 36px; cursor: pointer; }
+.sb-row .track { height: 40px; position: relative; }
+.sb-row .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--pix); transition: width .8s steps(20); }
+.sb-row.chosen .fill { background: repeating-linear-gradient(90deg, var(--pix) 0 12px, transparent 12px 16px); }
+.sb-row .v { text-align: right; }
+.sb-row.sel { background: rgba(31,42,24,.12); }
+.sb-row.base { color: var(--pix-2); cursor: default; }
+.sb-row.base .fill { background: none; border-right: 4px dashed var(--pix-2); }
+.sb-row .await { font-size: 28px; letter-spacing: .06em; color: var(--pix-2); }
+.metric-pad { position: absolute; left: 90px; top: 870px; width: 1090px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+.metric-pad button { background: #d9d2c3; color: #3b362e; border-radius: 14px; height: 92px; box-shadow: 0 8px 0 rgba(0,0,0,.35); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; transition: transform .08s, box-shadow .08s, background .2s; }
+.metric-pad button b { font: 400 40px/1 var(--pixel); }
+.metric-pad button span { font: 400 13px/1 var(--label); letter-spacing: .08em; }
+.metric-pad button.on { background: var(--ember); color: #fff; }
+.metric-pad button.press { transform: translateY(6px); box-shadow: 0 2px 0 rgba(0,0,0,.35); }
+.sb-explain { position: absolute; left: 90px; top: 112px; width: 1090px; font: 400 26px/1.35 var(--serif); color: var(--cream-2); }
+.sb-explain b { color: var(--cream); font-weight: 400; }
+.cm-panel { position: absolute; left: 1250px; top: 220px; width: 580px; }
+.cm-panel .small-label { margin-bottom: 10px; display: block; }
+.cm-panel .cm-name { font: 400 32px/1.1 var(--serif); margin-bottom: 16px; min-height: 36px; }
+.cm { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cm .cell { background: var(--lcd); color: var(--pix); border-radius: 12px; height: 150px; padding: 14px 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: inset 0 5px 12px rgba(0,0,0,.3); }
+.cm .cell b { font: 400 76px/0.9 var(--pixel); font-weight: 400; }
+.cm .cell span { font: 400 20px/1.15 var(--pixel); }
+.cm .cell.tp { background: var(--ember); color: #fff; box-shadow: none; }
+.eotm { position: absolute; left: 1250px; top: 690px; width: 580px; height: 270px; background: #3a2c1b; border: 14px solid #b08d57; box-shadow: inset 0 0 0 4px #7d6037, 0 30px 50px rgba(0,0,0,.5); padding: 26px 30px; text-align: center; }
+.eotm small { font: 400 15px/1 var(--label); letter-spacing: .2em; color: #e2c48f; }
+.eotm .who { font: 400 56px/1 var(--serif); margin: 14px 0 8px; color: var(--cream); }
+.eotm .who em { color: var(--ember); font-style: normal; }
+.eotm p { font: 400 19px/1.35 var(--serif); color: var(--cream-2); }
+.sim-sticker { position: absolute; left: 1250px; top: 34px; width: 580px; z-index: 20; background: var(--sim); color: #fff; font: 400 20px/1.15 var(--label); letter-spacing: .06em; padding: 14px 18px; transform: rotate(1.5deg); box-shadow: 0 10px 20px rgba(0,0,0,.45); text-align: center; }
+.sim-sticker small { display: block; font: 400 13px/1.4 var(--label); letter-spacing: .04em; margin-top: 8px; opacity: .9; }
+
+/* ======================================================================
+   08 — THE SMART LIST
+   ====================================================================== */
+.smart-head { position: absolute; left: 90px; top: 120px; }
+.smart-head .lede { margin-top: 14px; width: 1150px; font-size: 26px; }
+.queue { position: absolute; left: 90px; top: 340px; width: 1100px; height: 560px; }
+.card { position: absolute; width: 88px; height: 88px; border-radius: 10px; background: var(--paper); box-shadow: 0 6px 12px rgba(0,0,0,.4); display: grid; place-items: center; transition: transform .9s var(--pop), background .3s; font: 400 34px/1 var(--pixel); color: var(--ink-3); }
+.card.yes { background: var(--ember); color: #fff; }
+.queue .first-zone { position: absolute; left: -16px; top: -16px; width: 1038px; height: 120px; border: 4px dashed var(--note); border-radius: 16px; }
+.queue .first-zone span { position: absolute; left: 14px; top: -34px; font: 400 15px/1 var(--label); letter-spacing: .14em; color: var(--note); }
+.lever { position: absolute; left: 90px; top: 900px; display: flex; align-items: center; gap: 24px; z-index: 5; }
+.lever button { width: 200px; height: 86px; border-radius: 43px; background: #3b362e; position: relative; box-shadow: inset 0 6px 12px rgba(0,0,0,.5); }
+.lever button::after { content: ""; position: absolute; left: 8px; top: 8px; width: 70px; height: 70px; border-radius: 50%; background: var(--cream); transition: left .4s var(--pop), background .3s; box-shadow: 0 4px 8px rgba(0,0,0,.4); }
+.lever.on button { background: var(--ember); }
+.lever.on button::after { left: 122px; }
+.lever span { font: 400 20px/1.2 var(--label); letter-spacing: .1em; }
+.lever small { display: block; font: 400 13px/1 var(--label); color: var(--cream-3); margin-top: 6px; letter-spacing: .08em; }
+.found { position: absolute; left: 720px; top: 915px; font: 400 26px/1.2 var(--serif); color: var(--cream-2); }
+.found b { font: 400 62px/1 var(--pixel); color: var(--ember); vertical-align: -6px; margin: 0 6px; }
+.s08 .sticky.c1 { left: 1300px; top: 250px; width: 520px; --rot: -2deg; }
+.s08 .sticky.c2 { left: 1330px; top: 520px; width: 500px; --rot: 2.5deg; }
+.s08 .sticky.c3 { left: 1290px; top: 780px; width: 530px; --rot: -1.5deg; }
+.s08 .sticky h4 { font: 400 34px/1.05 var(--serif); font-weight: 400; margin-bottom: 8px; color: #2a2010; }
+
+/* ======================================================================
+   09 — THE DEMO
+   ====================================================================== */
+.s09 .phone { left: 1100px; top: 90px; }
+.demo-head { position: absolute; left: 90px; top: 130px; width: 900px; }
+.demo-head .lede { margin-top: 18px; font-size: 24px; }
+.frames { position: absolute; left: 90px; top: 500px; width: 900px; display: grid; gap: 12px; }
+.frames button { display: grid; grid-template-columns: 60px 1fr auto; align-items: center; gap: 16px; text-align: left; padding: 10px 18px; border-radius: 10px; background: rgba(244,236,221,.05); border: 1px solid rgba(244,236,221,.12); transition: .2s; }
+.frames button b { font: 400 44px/1 var(--pixel); color: var(--cream-3); }
+.frames button span { font: 400 28px/1.1 var(--serif); }
+.frames button span small { display: block; font: 400 17px/1.35 Georgia, serif; color: var(--cream-3); margin-top: 4px; }
+.frames button i { font: 400 12px/1 var(--label); letter-spacing: .12em; font-style: normal; color: var(--cream-3); border: 1px solid currentColor; padding: 6px 8px; border-radius: 4px; }
+.frames button.on { background: rgba(240,122,62,.14); border-color: var(--ember); }
+.frames button.on b { color: var(--ember); }
+.demo-live { position: absolute; left: 90px; bottom: 70px; font: 400 15px/1.4 var(--label); letter-spacing: .08em; color: var(--cream-3); }
+.demo-live a { color: var(--desk); background: var(--ember); padding: 14px 18px; border-radius: 6px; text-decoration: none; }
+.meter { height: 34px; border: 3px solid var(--pix); margin: 8px 0; position: relative; }
+.meter i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--pix); }
+
+/* ======================================================================
+   10 — END OF SHIFT (time card)
+   ====================================================================== */
+.clock { position: absolute; left: 150px; top: 150px; width: 560px; height: 780px; border-radius: 30px; background: linear-gradient(160deg, #6e7378, #44494e); box-shadow: 0 40px 80px rgba(0,0,0,.55); }
+.clock .face { position: absolute; left: 80px; top: 60px; width: 400px; height: 400px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 14px #2b2e31, 0 10px 20px rgba(0,0,0,.4); }
+.clock .face i { position: absolute; left: 50%; top: 50%; width: 10px; background: var(--ink); border-radius: 5px; transform-origin: 50% 100%; }
+.clock .face .hh { height: 110px; margin: -110px 0 0 -5px; transform: rotate(150deg); }
+.clock .face .mm { height: 160px; margin: -160px 0 0 -5px; width: 8px; transform: rotate(0deg); animation: tickm 60s steps(60) infinite; }
+@keyframes tickm { to { transform: rotate(360deg); } }
+.clock .face b { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px; border-radius: 50%; background: var(--ember); }
+.clock .slot { position: absolute; left: 100px; right: 100px; top: 540px; height: 24px; border-radius: 12px; background: #1b1d1f; }
+.clock .lbl { position: absolute; left: 0; right: 0; top: 620px; text-align: center; font: 400 18px/1 var(--label); letter-spacing: .3em; color: #c9ccd0; }
+.card-mask { position: absolute; left: 250px; top: 0; width: 360px; height: 690px; overflow: hidden; z-index: 4; }
+.timecard { position: absolute; left: 10px; top: 0; width: 340px; height: 430px; background: #efe6cf; color: var(--ink); padding: 30px 26px; box-shadow: 0 20px 40px rgba(0,0,0,.4); transform: translateY(-600px); transition: transform 1s var(--ease); }
+.timecard.in { transform: translateY(300px); }
+.timecard.out { transform: translateY(70px); transition: transform .9s var(--pop); }
+.timecard h4 { font: 400 15px/1 var(--label); letter-spacing: .2em; border-bottom: 2px solid var(--ink); padding-bottom: 8px; }
+.timecard .tc-name { font: 400 34px/1.05 var(--serif); margin: 14px 0 8px; }
+.timecard .tc-team { font: 400 15px/1.6 var(--type); color: var(--ink-2); }
+.timecard .tc-row { display: flex; justify-content: space-between; font: 400 26px/1.5 var(--pixel); border-bottom: 1px dashed var(--paper-line); }
+.timecard .punched { color: var(--red); opacity: 0; transition: opacity .1s; }
+.timecard.stamped .punched { opacity: 1; }
+.end-lines { position: absolute; left: 1180px; top: 220px; width: 660px; z-index: 6; }
+.end-lines .h1 { font-size: 88px; line-height: 1.02; }
+.end-lines .h1 + .lede { margin-top: 30px; font-size: 40px; color: var(--cream); }
+.end-lines .thanks { margin-top: 60px; font: 400 54px/1 var(--pixel); color: var(--ember); }
+.start-demo { margin-top: 34px; font: 700 30px/1 var(--label); letter-spacing: .14em; color: #fff; background: var(--green); padding: 30px 46px; border-radius: 60px;
+  box-shadow: 0 10px 0 rgba(0,0,0,.35); pointer-events: none; }
+.start-demo.on { pointer-events: auto; animation: demoPulse 1.6s ease-in-out 1s infinite; }
+.start-demo:hover { background: #4dbb5c; }
+.start-demo:active { transform: translateY(6px); box-shadow: 0 4px 0 rgba(0,0,0,.35); }
+@keyframes demoPulse { 50% { box-shadow: 0 10px 0 rgba(0,0,0,.35), 0 0 0 18px rgba(63,163,77,.25); } }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition-duration: .01s !important; } }
+
+/* 03 — the call list as 100 dots (replaces the printer) */
+.s03-head { position: absolute; left: 90px; top: 120px; }
+.dots { position: absolute; left: 90px; top: 290px; display: grid; grid-template-columns: repeat(10, 56px); gap: 14px; }
+.dots i { width: 56px; height: 56px; border-radius: 50%; background: #4a433a; display: grid; place-items: center; font: 400 30px/1 var(--pixel); font-style: normal; color: #fff;
+  transform: scale(0); transition: transform .35s var(--pop); }
+.dots i.on { transform: scale(1); }
+.dots i.y { background: var(--ember); }
+.dots-legend { position: absolute; left: 90px; top: 990px; font: 400 15px/1 var(--label); letter-spacing: .12em; color: var(--cream-3); }
+.dots-legend b { color: var(--ember); font-weight: 400; }
+.s03 .list-big { left: 1010px; top: 290px; }
+.chips { position: absolute; left: 1010px; top: 660px; width: 700px; display: flex; flex-wrap: wrap; gap: 10px; }
+.chips span { font: 400 16px/1 var(--label); letter-spacing: .08em; padding: 12px 14px; background: var(--paper); color: var(--ink); border-radius: 3px; }
+.chips span:first-child { background: var(--ember); color: #fff; }
+.s03 .sticky { left: 1300px; top: 790px; width: 330px; }
+.sim-sticker { width: auto !important; font-size: 24px !important; padding: 16px 22px !important; }
+.s08 .sticky { width: 460px !important; }
+.s08 .sticky h4 { margin-bottom: 0 !important; }
+
+/* version 2 — the Case File */
+.folder { position: absolute; left: 160px; top: 140px; width: 1600px; height: 820px; perspective: 2400px; }
+.folder .back { position: absolute; inset: 0; background: #d8b878; border-radius: 10px; box-shadow: 0 40px 80px rgba(0,0,0,.5); }
+.folder .back::before { content: ""; position: absolute; left: 60px; top: -34px; width: 300px; height: 44px; background: #d8b878; border-radius: 10px 10px 0 0; }
+.folder .page { position: absolute; top: 26px; bottom: 26px; background: var(--paper); box-shadow: 0 2px 6px rgba(0,0,0,.2); padding: 60px 64px; color: var(--ink); }
+.folder .page.left { left: 26px; width: 760px; }
+.folder .page.right { right: 26px; width: 760px; background-image: repeating-linear-gradient(180deg, transparent 0 47px, #e3d7c0 47px 48px); }
+.folder .cover { position: absolute; left: 50%; top: 0; width: 50%; height: 100%; background: linear-gradient(90deg, #c9a565, #e0c286); border-radius: 0 10px 10px 0;
+  transform-origin: left center; transform: rotateY(-180deg); transition: transform 1.3s cubic-bezier(.6,.05,.3,1); z-index: 5; box-shadow: -10px 0 30px rgba(0,0,0,.25); backface-visibility: hidden; }
+.folder.closed .cover { transform: rotateY(0); }
+.folder .cover span { position: absolute; left: 70px; top: 90px; font: 400 26px/1 var(--label); letter-spacing: .2em; color: #6b4e21; }
+.folder .cover b { position: absolute; left: 70px; top: 140px; font: 400 120px/1 var(--serif); color: #4b3415; font-weight: 400; }
+.case-kicker { font: 400 15px/1 var(--label); letter-spacing: .18em; color: var(--ink-3); }
+.case-title { font: 400 190px/0.9 var(--serif); margin: 18px 0 30px; letter-spacing: -.02em; }
+.case-title em, .case-def em { color: var(--ember-d); font-style: normal; }
+.case-def { font: 400 34px/1.35 var(--serif); }
+.folder .facts div { grid-template-columns: 170px 1fr; line-height: 48px; }
+.s02 .stamp { left: auto; top: auto; right: 230px; bottom: 150px; }
+.s02 .sticky { left: 900px; top: 760px; }
+.clip { position: absolute; left: 640px; top: 120px; width: 46px; height: 130px; border: 7px solid #9aa0a6; border-radius: 24px; z-index: 9; transform: rotate(8deg); }
+
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="stage">
+
+<!-- =====================================================================
+     01 — THE SHIFT (interactive phone game)
+     ===================================================================== -->
+<section class="slide s01" data-scene="01" data-title="The Shift">
+  <div class="tape"><b>01</b>The Shift</div>
+  <div class="phone" id="g-phone">
+    <div class="speaker"></div><div class="brand">BANCO · DESK 07</div>
+    <div class="lcd" id="g-lcd"></div>
+    <div class="keys"><button class="key call" id="g-call">CALL</button><button class="key end" id="g-end">END</button></div>
+    <div class="pad"><button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button></div>
+  </div>
+  <h1 class="game-title">You’re the <em>agent</em>.</h1>
+  <p class="game-sub">It’s 2008. Press <b>CALL</b>. Every client is real.</p>
+  <div class="board">
+    <div class="stat"><small>calls made</small><b id="g-calls">0</b></div>
+    <div class="stat yes"><small>said yes</small><b id="g-yes">0</b></div>
+    <div class="stat"><small>hours on phone</small><b id="g-hours">0</b></div>
+  </div>
+  <div class="log" id="g-log"></div>
+  <button class="auto" id="g-auto">Auto-dial the other 41,000 →</button>
+  <div class="sticky">Today’s goal:<br>just ONE yes :)</div>
+  <p class="fine">Real clients from our data · reactions made up for fun</p>
+  <div class="finale" id="g-finale">
+    <div>
+      <div class="l1">41,176 calls</div>
+      <div class="l2">2,955 hours on the phone. 36,537 times, the answer was “no”.</div>
+      <div class="l3">What if the phone told you<br>who to call <em>first</em>?</div>
+    </div>
+  </div>
+  <aside class="notes">
+    <p><b>Space</b> or the green CALL button dials. Ask someone from the audience to press it! Each call is a real client from our data with their real answer. The 5th call is a YES (confetti).</p>
+    <p>After 5 calls, press <b>A</b> or the "Auto-dial" button: the rest of the list runs by itself.</p>
+    <p>On the black screen: "2,955 hours on the phone for 4,639 yeses." Press → to show the question, then → to move on.</p>
+  </aside>
+</section>
+
+<!-- =====================================================================
+     02 — THE MISSION (what the project is)
+     ===================================================================== -->
+<section class="slide s02" data-scene="02" data-title="The Case File">
+  <div class="tape"><b>02</b>The Case File</div>
+  <div class="folder closed" id="folder">
+    <div class="back"></div>
+    <div class="page left">
+      <div class="case-kicker">CASE NO. 222 · UNIT 6 · DEEP LEARNING</div>
+      <div class="case-title">The <em>Call</em></div>
+      <p class="case-def">Predict who will <em>say yes</em> to a term deposit, <em>before</em> the bank calls.</p>
+    </div>
+    <div class="page right">
+      <dl class="facts">
+        <div><dt>Data</dt><dd>UCI Bank Marketing</dd></div>
+        <div><dt>When</dt><dd>May 2008 – November 2010</dd></div>
+        <div><dt>Clients</dt><dd><span data-eda="cleanRows"></span></dd></div>
+        <div><dt>Models</dt><dd>3 ANNs · 2 autoencoders</dd></div>
+      </dl>
+    </div>
+    <div class="cover"><span>CONFIDENTIAL</span><b>Case 222</b></div>
+  </div>
+  <div class="clip"></div>
+  <div class="stamp f" data-action="stamp">TARGET: y<small>DID THE CLIENT SUBSCRIBE?</small></div>
+  <div class="sticky f pop" style="--rot:3deg">Churn: who will <b>leave</b>?<br>Us: who will <b>commit</b>?</div>
+</section>
+
+<!-- =====================================================================
+     03 — THE CALL LIST (inside the data)
+     ===================================================================== -->
+<section class="slide s03" data-scene="03" data-title="The Call List">
+  <div class="tape"><b>03</b>The Call List</div>
+  <div class="h1 s03-head">One call in nine ends in <em>yes</em>.</div>
+  <div class="dots" id="dots" aria-label="100 calls: 11 yes, 89 no"></div>
+  <div class="dots-legend">1 dot = 1 call · <b>Y</b> = said yes</div>
+  <div class="list-big f">
+    <div class="lcd-tile"><div class="k">SAID YES</div><div class="v" data-eda="overall"></div><div class="s"><span data-eda="yes"></span> of <span data-eda="cleanRows"></span> calls</div></div>
+  </div>
+  <div class="chips f"><span>20 features</span><span>the client</span><span>the last call</span><span>the campaign</span><span>the economy</span></div>
+  <div class="sticky f pop" data-action="pin" style="--rot:-3deg">Always say “no”<br>= <b>88.7%</b> accurate.<br>So accuracy lies!</div>
+  <aside class="notes">
+    <p>The dots fill in: out of every 100 calls, about 11 said yes.</p>
+    <p>→ 11.3% said yes: 4,639 of 41,176. → 20 features in four groups: the client, the last call, the campaign, the economy.</p>
+    <p>→ "A model that always says no is 88.7% accurate and useless", so we judge models on PR-AUC and recall.</p>
+  </aside>
+</section>
+
+<!-- =====================================================================
+     04 — THE CLUES (EDA findings, cork board)
+     ===================================================================== -->
+<section class="slide s04" data-scene="04" data-title="The Clues">
+  <div class="tape"><b>04</b>The Clues</div>
+  <div class="h1 s04-head">Who says <em>yes</em>? Six clues.</div>
+  <div class="s04-hint">from the data · click a card to open it</div>
+  <div id="clues"></div>
+  <div class="clue-detail" id="clue-detail" data-interactive>
+    <button class="close" id="clue-close">close ✕</button>
+    <div class="d-num"></div><h3></h3><p></p>
+    <svg id="clue-chart" role="img" aria-label="Subscription rate by group"></svg>
+  </div>
+  <i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i>
+  <i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i>
+  <i class="f" data-action="close" hidden></i>
+  <aside class="notes">
+    <p>Press → to open each clue, or click any card on the board. The dashed line is the overall rate (11.3%). Orange bars are above it. Hover a bar for the number of clients.</p>
+    <p>1 Past success 65%. 2 Mobile 2.8× landline. 3 May: busiest month, worst rate. 4 Each extra call lowers the odds. 5 Yes ≈10× more common in low-employment quarters (a pattern in time, not a cause). 6 Students and retirees are the most open.</p>
+  </aside>
+</section>
+
+<!-- =====================================================================
+     05 — THE CLEAN-UP (preprocessing on a CRT)
+     ===================================================================== -->
+<section class="slide s05" data-scene="05" data-title="The Clean-up">
+  <div class="tape"><b>05</b>The Clean-up</div>
+  <div class="crt"><div class="screen"><div class="term" id="term"></div></div></div>
+  <div class="gauge">
+    <h3>Rows in the data</h3>
+    <div class="num" id="g-rows">0</div>
+    <div class="cols" id="g-cols">× 21 columns</div>
+    <div class="steps-list" id="steps-list"></div>
+    <div class="split-bar" id="split-bar">
+      <div style="flex:70;background:#3fa34d">TRAIN 28,823</div>
+      <div style="flex:15;background:#c98500">VAL 6,176</div>
+      <div style="flex:15;background:#d2453b">TEST 6,177</div>
+    </div>
+  </div>
+  <i class="f" data-action="step" hidden></i><i class="f" data-action="step" hidden></i><i class="f" data-action="step" hidden></i>
+  <i class="f" data-action="step" hidden></i><i class="f" data-action="step" hidden></i><i class="f" data-action="step" hidden></i>
+  <i class="f" data-action="step" hidden></i>
+  <aside class="notes">
+    <p>Each → types the next command, with real results. Spend the most time on the orange warning, <b>duration</b>: a "yes" call lasts 553 s on average against 221 s for a "no", but you only know that after hanging up. Keeping it would be cheating.</p>
+    <p>At the split: every model uses exactly this split, so the comparison is fair. Last line: encoders and scaler only ever see the training data.</p>
+  </aside>
+</section>
+
+<!-- =====================================================================
+     06 — THE TRAINEES (models)
+     ===================================================================== -->
+<section class="slide s06" data-scene="06" data-title="The Trainees">
+  <div class="tape"><b>06</b>The Trainees</div>
+  <div class="memo"><div class="h1">Five new <em>agents</em>.</div><ul id="memo"></ul></div>
+  <div class="rail"></div>
+  <div class="badges" id="badges"></div>
+  <div class="flip-hint">click a badge to flip it</div>
+  <i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i>
+  <i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i>
+  <aside class="notes">
+    <p>"We trained five new agents, five models, on the same split and the same metrics." Each owner flips their badge and explains their model in one sentence.</p>
+    <p>The status stickers come from data/models.js. Update them as the work moves on.</p>
+  </aside>
+</section>
+
+<!-- =====================================================================
+     07 — THE SCOREBOARD (results — simulated for now)
+     ===================================================================== -->
+<section class="slide s07" data-scene="07" data-title="The Scoreboard">
+  <div class="tape"><b>07</b>The Scoreboard</div>
+  <div class="sim-sticker" id="sim-sticker"></div>
+  <p class="sb-explain" id="sb-explain"></p>
+  <div class="sb"><div class="lcd-wide"><div class="top"><span id="sb-metric">PR-AUC</span><span>TEST SET · 6,177 CLIENTS</span></div><div id="sb-rows"></div></div></div>
+  <div class="metric-pad" id="metric-pad" data-interactive></div>
+  <div class="cm-panel">
+    <span class="small-label">Confusion matrix · click a row</span>
+    <div class="cm-name" id="cm-name"></div>
+    <div class="cm">
+      <div class="cell tp"><b id="cm-tp"></b><span>called · said yes</span></div>
+      <div class="cell"><b id="cm-fn"></b><span>missed · would have said yes</span></div>
+      <div class="cell"><b id="cm-fp"></b><span>called · said no</span></div>
+      <div class="cell"><b id="cm-tn"></b><span>skipped · would have said no</span></div>
+    </div>
+  </div>
+  <div class="eotm" id="eotm"></div>
+  <i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i>
+  <aside class="notes">
+    <p><b>While results are simulated, say so: "These numbers are placeholders to show the layout."</b></p>
+    <p>Keys <b>1–6</b> switch the metric (or click the keypad). Start with PR-AUC, the fairest score for an 11% minority. The dashed "ALWAYS NO" row is the baseline to beat.</p>
+    <p>Click a model row to see its confusion matrix in plain words.</p>
+  </aside>
+</section>
+
+<!-- =====================================================================
+     08 — THE SMART LIST (what it means)
+     ===================================================================== -->
+<section class="slide s08" data-scene="08" data-title="The Smart List">
+  <div class="tape"><b>08</b>The Smart List</div>
+  <div class="smart-head"><div class="h1">Same list. <em>Smarter order.</em></div>
+    <p class="lede">50 calls, about 6 yes. Flip the switch.</p></div>
+  <div class="queue" id="queue"><div class="first-zone"><span>FIRST 10 CALLS</span></div></div>
+  <div class="lever" id="lever" data-interactive><button aria-label="Sort by model"></button><span>SORT BY MODEL<small>illustration, not a result</small></span></div>
+  <div class="found" id="found"></div>
+  <div class="sticky c1 f pop"><h4>The model ranks. People decide.</h4></div>
+  <div class="sticky c2 blue f pop"><h4>It doesn’t create a yes.</h4></div>
+  <div class="sticky c3 green f pop"><h4>It must be re-checked on new data.</h4></div>
+  <i class="f" data-action="sort" hidden></i>
+  <aside class="notes">
+    <p>Press → (or flip the switch): the same 50 calls get sorted by a model. The yes cards move to the front. This is an illustration of what ranking does, not a measured result.</p>
+    <p>→ Three honest points: people decide, it can't create a yes, it must be re-checked on new data.</p>
+  </aside>
+</section>
+
+<!-- =====================================================================
+     09 — THE DEMO (storyboard)
+     ===================================================================== -->
+<section class="slide s09" data-scene="09" data-title="The Demo">
+  <div class="tape"><b>09</b>The Demo</div>
+  <div class="demo-head"><div class="h1">The phone, <em>upgraded</em>.</div>
+    <p class="lede">The app we are building. Five screens, all planned.</p></div>
+  <div class="frames" id="frames" data-interactive></div>
+  <div class="phone" id="d-phone">
+    <div class="speaker"></div><div class="brand">BANCO · SMART DESK</div>
+    <div class="lcd" id="d-lcd"></div>
+    <div class="keys"><button class="key call" id="d-call">PREDICT</button><button class="key end" id="d-end">RESET</button></div>
+    <div class="pad" id="d-pad"><button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button></div>
+  </div>
+  <div class="demo-live" id="demo-live">LIVE DEMO · COMING SOON</div>
+  <i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i><i class="f" data-action="next" hidden></i>
+  <aside class="notes">
+    <p>Walk through the five screens with → or keys 1–5. Every screen is tagged PLANNED. Say clearly that the app is being built.</p>
+    <p>When the app exists, set demo.status = "ready" and demo.url in data/results.js, and a launch button appears.</p>
+  </aside>
+</section>
+
+<!-- =====================================================================
+     10 — END OF SHIFT
+     ===================================================================== -->
+<section class="slide s10" data-scene="10" data-title="End of Shift">
+  <div class="tape"><b>10</b>End of Shift</div>
+  <div class="clock"><div class="face"><i class="hh"></i><i class="mm"></i><b></b></div><div class="slot"></div><div class="lbl">TIME CLOCK</div></div>
+  <div class="card-mask"><div class="timecard" id="timecard">
+    <h4>TIME CARD · DESK 07</h4>
+    <div class="tc-name">The Call team</div>
+    <div class="tc-team">ANN · Sara · Lujain · Khalid<br>Autoencoders · Shaden · Majid</div>
+    <div class="tc-row"><span>IN</span><span>09:00</span></div>
+    <div class="tc-row"><span>CALLS</span><span>41,176</span></div>
+    <div class="tc-row"><span>YES</span><span>4,639</span></div>
+    <div class="tc-row"><span>OUT</span><span class="punched">17:00 ✓</span></div>
+  </div></div>
+  <span class="f" data-t="300" data-action="cardin" hidden></span>
+  <span class="f" data-t="1500" data-action="punch" hidden></span>
+  <div class="end-lines">
+    <div class="h1 f" data-t="2400">Every call is a <em>question</em>.</div>
+    <p class="lede f" data-t="3600">We are learning to hear the answer before we dial.</p>
+    <div class="thanks f" data-t="5200">THANK YOU</div>
+    <button class="start-demo f" data-t="5900" id="start-demo">▶&nbsp; START DEMO</button>
+  </div>
+  <aside class="notes">
+    <p>The time card punches out by itself. Closing line: "Every call is a question. We are learning to hear the answer before we dial. Thank you. Now, the demo."</p>
+  </aside>
+</section>
+
+<div id="tip" role="tooltip"></div>
+</div>
+</div>
+
+<div id="chrome">
+  <div id="counter"></div>
+  <div id="controls">
+    <button id="btn-prev" aria-label="Previous">←</button>
+    <button id="btn-next" aria-label="Next">→</button>
+    <button id="btn-full" title="Full screen (F)">Full screen</button>
+  </div>
+  <div id="progress"></div>
+  <div id="notes"></div>
+  <div id="overview"><div class="grid"><p class="hint">→ / Space next · ← back · O scenes · N notes · F full screen · M sound · in scene 01: Space = CALL, A = auto-dial</p></div></div>
+</div>
+
+<script>
+// Generated by make_eda_data.py from data/bank_clean.csv and data/bank-additional-full.csv. Real values.
+window.EDA = {
+ "rawRows": 41188,
+ "rawCols": 21,
+ "duplicates": 12,
+ "cleanRows": 41176,
+ "cleanCols": 21,
+ "yes": 4639,
+ "no": 36537,
+ "overall": 0.1127,
+ "unknown": [
+  {
+   "column": "job",
+   "count": 330,
+   "pct": 0.8
+  },
+  {
+   "column": "marital",
+   "count": 80,
+   "pct": 0.19
+  },
+  {
+   "column": "education",
+   "count": 1731,
+   "pct": 4.2
+  },
+  {
+   "column": "default",
+   "count": 8597,
+   "pct": 20.87
+  },
+  {
+   "column": "housing",
+   "count": 990,
+   "pct": 2.4
+  },
+  {
+   "column": "loan",
+   "count": 990,
+   "pct": 2.4
+  }
+ ],
+ "missing": 0,
+ "pdaysNotRecorded": 39673,
+ "split": {
+  "train": 28823,
+  "val": 6176,
+  "test": 6177,
+  "trainYes": 3247,
+  "valYes": 696,
+  "testYes": 696
+ },
+ "durationMean": {
+  "no": 221,
+  "yes": 553
+ },
+ "signals": {
+  "poutcome": [
+   {
+    "label": "Success",
+    "rate": 0.6511,
+    "n": 1373
+   },
+   {
+    "label": "Failure",
+    "rate": 0.1423,
+    "n": 4252
+   },
+   {
+    "label": "No previous campaign",
+    "rate": 0.0883,
+    "n": 35551
+   }
+  ],
+  "contact": [
+   {
+    "label": "Mobile",
+    "rate": 0.1474,
+    "n": 26135
+   },
+   {
+    "label": "Landline",
+    "rate": 0.0523,
+    "n": 15041
+   }
+  ],
+  "month": [
+   {
+    "label": "Mar",
+    "rate": 0.5055,
+    "n": 546
+   },
+   {
+    "label": "Apr",
+    "rate": 0.2049,
+    "n": 2631
+   },
+   {
+    "label": "May",
+    "rate": 0.0644,
+    "n": 13767
+   },
+   {
+    "label": "Jun",
+    "rate": 0.1051,
+    "n": 5318
+   },
+   {
+    "label": "Jul",
+    "rate": 0.0904,
+    "n": 7169
+   },
+   {
+    "label": "Aug",
+    "rate": 0.1061,
+    "n": 6176
+   },
+   {
+    "label": "Sep",
+    "rate": 0.4491,
+    "n": 570
+   },
+   {
+    "label": "Oct",
+    "rate": 0.4393,
+    "n": 717
+   },
+   {
+    "label": "Nov",
+    "rate": 0.1015,
+    "n": 4100
+   },
+   {
+    "label": "Dec",
+    "rate": 0.489,
+    "n": 182
+   }
+  ],
+  "job": [
+   {
+    "label": "student",
+    "rate": 0.3143,
+    "n": 875
+   },
+   {
+    "label": "retired",
+    "rate": 0.2526,
+    "n": 1718
+   },
+   {
+    "label": "unemployed",
+    "rate": 0.142,
+    "n": 1014
+   },
+   {
+    "label": "admin.",
+    "rate": 0.1297,
+    "n": 10419
+   },
+   {
+    "label": "management",
+    "rate": 0.1122,
+    "n": 2924
+   },
+   {
+    "label": "unknown",
+    "rate": 0.1121,
+    "n": 330
+   },
+   {
+    "label": "technician",
+    "rate": 0.1083,
+    "n": 6739
+   },
+   {
+    "label": "self-employed",
+    "rate": 0.1049,
+    "n": 1421
+   },
+   {
+    "label": "housemaid",
+    "rate": 0.1,
+    "n": 1060
+   },
+   {
+    "label": "entrepreneur",
+    "rate": 0.0852,
+    "n": 1456
+   },
+   {
+    "label": "services",
+    "rate": 0.0814,
+    "n": 3967
+   },
+   {
+    "label": "blue-collar",
+    "rate": 0.069,
+    "n": 9253
+   }
+  ],
+  "previous": [
+   {
+    "label": "0",
+    "rate": 0.0883,
+    "n": 35551
+   },
+   {
+    "label": "1",
+    "rate": 0.212,
+    "n": 4561
+   },
+   {
+    "label": "2",
+    "rate": 0.4642,
+    "n": 754
+   },
+   {
+    "label": "3+",
+    "rate": 0.5871,
+    "n": 310
+   }
+  ],
+  "calls": [
+   {
+    "label": "1",
+    "rate": 0.1304,
+    "n": 17634
+   },
+   {
+    "label": "2",
+    "rate": 0.1146,
+    "n": 10568
+   },
+   {
+    "label": "3",
+    "rate": 0.1075,
+    "n": 5340
+   },
+   {
+    "label": "4",
+    "rate": 0.094,
+    "n": 2650
+   },
+   {
+    "label": "5",
+    "rate": 0.075,
+    "n": 1599
+   },
+   {
+    "label": "6",
+    "rate": 0.0766,
+    "n": 979
+   },
+   {
+    "label": "7",
+    "rate": 0.0604,
+    "n": 629
+   },
+   {
+    "label": "8",
+    "rate": 0.0425,
+    "n": 400
+   },
+   {
+    "label": "9",
+    "rate": 0.0601,
+    "n": 283
+   },
+   {
+    "label": "10+",
+    "rate": 0.0356,
+    "n": 1094
+   }
+  ],
+  "economy": [
+   {
+    "label": "< 5,050k",
+    "rate": 0.4894,
+    "n": 3300
+   },
+   {
+    "label": "5,050k – 5,150k",
+    "rate": 0.1653,
+    "n": 10194
+   },
+   {
+    "label": "> 5,150k",
+    "rate": 0.0484,
+    "n": 27682
+   }
+  ],
+  "age": [
+   {
+    "label": "17–24",
+    "rate": 0.2399,
+    "n": 1067
+   },
+   {
+    "label": "25–34",
+    "rate": 0.1217,
+    "n": 13684
+   },
+   {
+    "label": "35–44",
+    "rate": 0.0866,
+    "n": 13495
+   },
+   {
+    "label": "45–54",
+    "rate": 0.0864,
+    "n": 8702
+   },
+   {
+    "label": "55–64",
+    "rate": 0.1357,
+    "n": 3566
+   },
+   {
+    "label": "65+",
+    "rate": 0.4728,
+    "n": 662
+   }
+  ]
+ },
+ "corr": {
+  "nr.employed": -0.355,
+  "euribor3m": -0.308,
+  "emp.var.rate": -0.298,
+  "pdays_recorded": 0.325,
+  "previous": 0.23,
+  "campaign": -0.066,
+  "age": 0.03
+ }
+};
+
+</script>
+<script>
+/* ==========================================================================
+   MODEL LINEUP (scene 08) — what each model is and where it stands.
+   These descriptions come from the team plan and the notebooks. No metrics here:
+   metrics live in results.js.
+   Update `status` as work moves on:  "Planned" | "In progress" | "Notebook ready" | "Trained"
+   ========================================================================== */
+
+window.MODELS = [
+  {
+    id: "ann1", name: "ANN 1", title: "Regularization Lab", family: "ANN", glyph: "ann",
+    status: "In progress",
+    idea: "The same network trained five ways, to see what each regularization technique really changes.",
+    config: [
+      ["Variants", "Plain → + L2 → + Dropout → + BatchNorm → all combined + Early Stopping"],
+      ["Input", "One-hot categories + scaled numbers"],
+      ["Imbalance", "Class weights"],
+    ],
+    output: "Side-by-side learning curves and a table of the effect of each technique.",
+  },
+  {
+    id: "ann2", name: "ANN 2", title: "Entity Embeddings", family: "ANN", glyph: "emb",
+    status: "Trained",
+    idea: "Instead of one-hot encoding, every categorical column gets its own Embedding layer, so the model learns which jobs, months and channels behave alike.",
+    config: [
+      ["Architecture", "Functional API · 10 embedding inputs (size 4) + numeric input → Dense 64 → 32 → 1"],
+      ["Final model", "L2 1e-4 · Dropout 0.3 · Adam 1e-3 · batch 256 · Early Stopping"],
+      ["Tuned by hand", "Optimizers, embedding size, learning rate, batch size, dropout, L2 · 3-fold CV"],
+      ["Imbalance", "Class weights"],
+    ],
+    output: "2D map of the learned job embeddings and a manual tuning table.",
+  },
+  {
+    id: "ann3", name: "ANN 3", title: "Keras Tuner + Imbalance", family: "ANN", glyph: "tuner",
+    status: "Notebook ready",
+    idea: "Let Bayesian Optimization search the network, then compare two ways of handling the 11% minority class.",
+    config: [
+      ["Search", "Bayesian Optimization · 25 trials · objective: validation PR-AUC"],
+      ["Space", "1–3 layers · 16–256 units · dropout 0–0.5 · L2 1e-5–1e-2 · LR 1e-4–1e-2 · batch 64–512"],
+      ["Imbalance", "Class weights  vs  focal loss (α 0.75, γ 2)"],
+    ],
+    output: "Best hyperparameters and a class-weights vs focal-loss comparison.",
+  },
+  {
+    id: "ae1", name: "AE 1", title: "Learned Features", family: "Autoencoder", glyph: "ae",
+    status: "In progress",
+    idea: "A denoising autoencoder learns a compressed picture of each client; its encoder then feeds a classifier, first frozen, then fine-tuned.",
+    config: [
+      ["Steps", "Denoising AE → frozen encoder + classifier → fine-tune"],
+      ["Extra", "A 2-unit bottleneck version, to draw the clients in 2D"],
+    ],
+    output: "2D latent space coloured by yes / no.",
+  },
+  {
+    id: "ae2", name: "AE 2", title: "Anomaly Detector", family: "Autoencoder", glyph: "anomaly",
+    status: "In progress",
+    idea: "Trained only on clients who said no. A client it cannot rebuild well looks unusual, and the rebuild error becomes the score.",
+    config: [
+      ["Training data", "“No” clients only"],
+      ["Score", "Reconstruction error"],
+    ],
+    output: "Error distribution for yes vs no, and the error per feature.",
+  },
+];
+
+/* Settings every model shares (from the notebooks) */
+window.SHARED_SETUP = [
+  "Same split · 70 / 15 / 15 · stratified · seed 42",
+  "Encoders & scaler fitted on train only",
+  "Metrics: accuracy · PR-AUC · recall",
+  "Class imbalance handled in every model",
+  "Weights saved for every model",
+  "Trained in Google Colab",
+];
+
+</script>
+<script>
+/* ==========================================================================
+   MODEL RESULTS — the only file you edit when real results are ready.
+   ==========================================================================
+
+   status:
+     "awaiting"  → every metric shows "AWAITING FINAL MODEL RESULTS"
+     "simulated" → shows the numbers below with a "SIMULATED PREVIEW" warning on every result.
+                   THE NUMBERS BELOW ARE MADE UP. They only exist to preview the layout.
+     "final"     → shows the numbers as real results (no warning).
+
+   When a model is finished:
+     1. Copy its TEST-set confusion matrix into cm (tp, fn, fp, tn). Accuracy, precision,
+        recall and F1 are calculated from it automatically.
+     2. Copy its test ROC-AUC and PR-AUC (ANN 2 / ANN 3 call PR-AUC "auc").
+     3. Set done: true for that model.
+   When all are done: set finalModel to the chosen id and status to "final".
+   Test set (same split for everyone): 6,177 clients, 696 "yes", 5,481 "no".
+   ========================================================================== */
+
+window.RESULTS = {
+  status: "simulated",
+
+  testSet: { rows: 6177, yes: 696, no: 5481 },
+
+  finalModel: "ann3",              // id of the chosen model (SIMULATED choice)
+  finalReason: "Highest PR-AUC and F1 on the test set, with recall close to the best model.",   // SIMULATED
+
+  models: [
+    {
+      id: "ann1", name: "ANN 1", title: "Regularization Lab", family: "ANN",
+      done: false,
+      roc_auc: 0.789, pr_auc: 0.441,                       // SIMULATED
+      cm: { tp: 418, fn: 278, fp: 760, tn: 4721 },         // SIMULATED
+    },
+    {
+      id: "ann2", name: "ANN 2", title: "Entity Embeddings", family: "ANN",
+      done: false,
+      roc_auc: 0.798, pr_auc: 0.458,                       // SIMULATED
+      cm: { tp: 446, fn: 250, fp: 822, tn: 4659 },         // SIMULATED
+    },
+    {
+      id: "ann3", name: "ANN 3", title: "Keras Tuner + Imbalance", family: "ANN",
+      done: false,
+      roc_auc: 0.806, pr_auc: 0.472,                       // SIMULATED
+      cm: { tp: 437, fn: 259, fp: 690, tn: 4791 },         // SIMULATED
+    },
+    {
+      id: "ae1", name: "AE 1", title: "Learned Features", family: "Autoencoder",
+      done: false,
+      roc_auc: 0.786, pr_auc: 0.432,                       // SIMULATED
+      cm: { tp: 405, fn: 291, fp: 745, tn: 4736 },         // SIMULATED
+    },
+    {
+      id: "ae2", name: "AE 2", title: "Anomaly Detector", family: "Autoencoder",
+      done: false,
+      roc_auc: 0.702, pr_auc: 0.291,                       // SIMULATED
+      cm: { tp: 352, fn: 344, fp: 1210, tn: 4271 },        // SIMULATED
+    },
+  ],
+
+  /* Demo (scene 11). Leave url empty until the app exists.
+     screenshots: paths relative to index.html, e.g. "assets/demo-1.png" */
+  demo: {
+    status: "planned",             // "planned" | "ready"
+    url: "",
+    screenshots: [],
+  },
+};
+
+</script>
+<script>
+// Real rows from data/bank_clean.csv (row = 0-based row number). Order chosen so a yes appears early.
+window.SAMPLE = [{"row": 4380, "age": 44, "job": "blue-collar", "marital": "married", "contact": "telephone", "month": "may", "day_of_week": "tue", "campaign": 1, "poutcome": "nonexistent", "y": 0}, {"row": 31105, "age": 38, "job": "blue-collar", "marital": "married", "contact": "cellular", "month": "may", "day_of_week": "wed", "campaign": 1, "poutcome": "nonexistent", "y": 0}, {"row": 29804, "age": 27, "job": "technician", "marital": "single", "contact": "cellular", "month": "apr", "day_of_week": "mon", "campaign": 5, "poutcome": "failure", "y": 0}, {"row": 23655, "age": 30, "job": "admin.", "marital": "married", "contact": "cellular", "month": "aug", "day_of_week": "thu", "campaign": 17, "poutcome": "nonexistent", "y": 0}, {"row": 27091, "age": 33, "job": "technician", "marital": "single", "contact": "cellular", "month": "nov", "day_of_week": "fri", "campaign": 1, "poutcome": "nonexistent", "y": 1}, {"row": 34159, "age": 32, "job": "blue-collar", "marital": "single", "contact": "cellular", "month": "may", "day_of_week": "wed", "campaign": 3, "poutcome": "nonexistent", "y": 0}, {"row": 23313, "age": 54, "job": "technician", "marital": "married", "contact": "cellular", "month": "aug", "day_of_week": "wed", "campaign": 1, "poutcome": "nonexistent", "y": 0}, {"row": 29449, "age": 46, "job": "entrepreneur", "marital": "single", "contact": "cellular", "month": "apr", "day_of_week": "mon", "campaign": 3, "poutcome": "failure", "y": 0}, {"row": 16186, "age": 44, "job": "admin.", "marital": "married", "contact": "cellular", "month": "jul", "day_of_week": "tue", "campaign": 2, "poutcome": "nonexistent", "y": 0}, {"row": 28474, "age": 55, "job": "admin.", "marital": "single", "contact": "cellular", "month": "apr", "day_of_week": "tue", "campaign": 2, "poutcome": "failure", "y": 0}, {"row": 37077, "age": 27, "job": "technician", "marital": "single", "contact": "cellular", "month": "jul", "day_of_week": "mon", "campaign": 3, "poutcome": "nonexistent", "y": 0}, {"row": 31642, "age": 32, "job": "services", "marital": "married", "contact": "cellular", "month": "may", "day_of_week": "thu", "campaign": 1, "poutcome": "failure", "y": 0}, {"row": 15755, "age": 36, "job": "blue-collar", "marital": "single", "contact": "cellular", "month": "jul", "day_of_week": "mon", "campaign": 8, "poutcome": "nonexistent", "y": 0}, {"row": 37015, "age": 23, "job": "student", "marital": "single", "contact": "cellular", "month": "jul", "day_of_week": "tue", "campaign": 2, "poutcome": "success", "y": 1}, {"row": 15025, "age": 49, "job": "services", "marital": "single", "contact": "cellular", "month": "jul", "day_of_week": "thu", "campaign": 1, "poutcome": "nonexistent", "y": 0}, {"row": 6983, "age": 53, "job": "unemployed", "marital": "married", "contact": "telephone", "month": "may", "day_of_week": "thu", "campaign": 1, "poutcome": "nonexistent", "y": 0}, {"row": 27983, "age": 29, "job": "admin.", "marital": "single", "contact": "cellular", "month": "apr", "day_of_week": "wed", "campaign": 1, "poutcome": "success", "y": 0}, {"row": 4494, "age": 32, "job": "blue-collar", "marital": "married", "contact": "telephone", "month": "may", "day_of_week": "tue", "campaign": 3, "poutcome": "nonexistent", "y": 0}, {"row": 10086, "age": 35, "job": "technician", "marital": "married", "contact": "telephone", "month": "jun", "day_of_week": "thu", "campaign": 1, "poutcome": "nonexistent", "y": 0}, {"row": 38406, "age": 54, "job": "admin.", "marital": "divorced", "contact": "cellular", "month": "oct", "day_of_week": "wed", "campaign": 2, "poutcome": "success", "y": 0}, {"row": 33139, "age": 36, "job": "blue-collar", "marital": "married", "contact": "telephone", "month": "may", "day_of_week": "tue", "campaign": 1, "poutcome": "nonexistent", "y": 0}, {"row": 19607, "age": 39, "job": "admin.", "marital": "married", "contact": "cellular", "month": "aug", "day_of_week": "thu", "campaign": 2, "poutcome": "nonexistent", "y": 0}, {"row": 2829, "age": 52, "job": "blue-collar", "marital": "married", "contact": "telephone", "month": "may", "day_of_week": "wed", "campaign": 1, "poutcome": "nonexistent", "y": 0}, {"row": 32811, "age": 27, "job": "technician", "marital": "married", "contact": "cellular", "month": "may", "day_of_week": "mon", "campaign": 1, "poutcome": "nonexistent", "y": 0}, {"row": 13229, "age": 34, "job": "blue-collar", "marital": "married", "contact": "cellular", "month": "jul", "day_of_week": "wed", "campaign": 3, "poutcome": "nonexistent", "y": 1}, {"row": 10828, "age": 38, "job": "blue-collar", "marital": "married", "contact": "telephone", "month": "jun", "day_of_week": "wed", "campaign": 1, "poutcome": "nonexistent", "y": 0}, {"row": 26072, "age": 29, "job": "admin.", "marital": "married", "contact": "cellular", "month": "nov", "day_of_week": "wed", "campaign": 3, "poutcome": "nonexistent", "y": 0}, {"row": 1590, "age": 39, "job": "services", "marital": "single", "contact": "telephone", "month": "may", "day_of_week": "fri", "campaign": 4, "poutcome": "nonexistent", "y": 0}, {"row": 5976, "age": 26, "job": "technician", "marital": "married", "contact": "telephone", "month": "may", "day_of_week": "tue", "campaign": 3, "poutcome": "nonexistent", "y": 0}, {"row": 10665, "age": 22, "job": "student", "marital": "single", "contact": "telephone", "month": "jun", "day_of_week": "tue", "campaign": 2, "poutcome": "nonexistent", "y": 0}, {"row": 30971, "age": 52, "job": "management", "marital": "married", "contact": "cellular", "month": "may", "day_of_week": "tue", "campaign": 3, "poutcome": "nonexistent", "y": 0}, {"row": 23822, "age": 36, "job": "admin.", "marital": "single", "contact": "cellular", "month": "aug", "day_of_week": "fri", "campaign": 2, "poutcome": "nonexistent", "y": 0}, {"row": 24099, "age": 48, "job": "admin.", "marital": "married", "contact": "telephone", "month": "nov", "day_of_week": "wed", "campaign": 1, "poutcome": "nonexistent", "y": 0}, {"row": 20587, "age": 36, "job": "technician", "marital": "married", "contact": "cellular", "month": "aug", "day_of_week": "tue", "campaign": 3, "poutcome": "nonexistent", "y": 0}, {"row": 7150, "age": 51, "job": "management", "marital": "married", "contact": "telephone", "month": "may", "day_of_week": "thu", "campaign": 3, "poutcome": "nonexistent", "y": 0}, {"row": 27793, "age": 29, "job": "self-employed", "marital": "married", "contact": "cellular", "month": "mar", "day_of_week": "wed", "campaign": 1, "poutcome": "nonexistent", "y": 0}, {"row": 6742, "age": 36, "job": "technician", "marital": "married", "contact": "telephone", "month": "may", "day_of_week": "wed", "campaign": 2, "poutcome": "nonexistent", "y": 0}, {"row": 34020, "age": 40, "job": "blue-collar", "marital": "single", "contact": "cellular", "month": "may", "day_of_week": "wed", "campaign": 3, "poutcome": "nonexistent", "y": 0}, {"row": 34916, "age": 41, "job": "blue-collar", "marital": "married", "contact": "cellular", "month": "may", "day_of_week": "fri", "campaign": 1, "poutcome": "nonexistent", "y": 0}, {"row": 38648, "age": 37, "job": "entrepreneur", "marital": "divorced", "contact": "cellular", "month": "nov", "day_of_week": "wed", "campaign": 2, "poutcome": "nonexistent", "y": 0}, {"row": 30540, "age": 35, "job": "admin.", "marital": "married", "contact": "cellular", "month": "may", "day_of_week": "mon", "campaign": 3, "poutcome": "nonexistent", "y": 0}, {"row": 1180, "age": 39, "job": "admin.", "marital": "married", "contact": "telephone", "month": "may", "day_of_week": "thu", "campaign": 2, "poutcome": "nonexistent", "y": 0}, {"row": 17053, "age": 31, "job": "admin.", "marital": "divorced", "contact": "cellular", "month": "jul", "day_of_week": "fri", "campaign": 2, "poutcome": "nonexistent", "y": 0}];
+
+</script>
+<script>
+/* ==========================================================================
+   SFX — every sound is synthesized with the Web Audio API (no audio files).
+   Sound is ON by default. M toggles it. Browsers only allow sound after the
+   first click or key press, so the very first animation may be silent.
+   ========================================================================== */
+(function () {
+  let ctx = null, noiseBuf = null, master = null;
+  const SFX = { enabled: true };
+
+  function ac() {
+    if (!SFX.enabled) return null;
+    try {
+      if (!ctx) {
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
+        noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 1.5, ctx.sampleRate);
+        const d = noiseBuf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      if (ctx.state === "suspended") ctx.resume();
+      return ctx;
+    } catch (e) { return null; }
+  }
+  // unlock audio on the first gesture
+  ["pointerdown", "keydown"].forEach((ev) => addEventListener(ev, () => ac(), { once: true }));
+
+  function tone(freq, dur, { type = "sine", gain = 0.12, when = 0, attack = 0.01, release = 0.04, slide = null } = {}) {
+    const c = ac(); if (!c) return;
+    const t = c.currentTime + when;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(gain, t + attack);
+    g.gain.setValueAtTime(gain, t + Math.max(attack, dur - release));
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(g).connect(master); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(dur, { gain = 0.2, when = 0, freq = 2000, q = 1, type = "bandpass", sweep = null } = {}) {
+    const c = ac(); if (!c) return;
+    const t = c.currentTime + when;
+    const s = c.createBufferSource(); s.buffer = noiseBuf;
+    const f = c.createBiquadFilter(); f.type = type; f.frequency.setValueAtTime(freq, t); f.Q.value = q;
+    if (sweep) f.frequency.exponentialRampToValueAtTime(sweep, t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    s.connect(f).connect(g).connect(master); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+  }
+
+  const DTMF = { 1: [697, 1209], 2: [697, 1336], 3: [697, 1477], 4: [770, 1209], 5: [770, 1336], 6: [770, 1477], 7: [852, 1209], 8: [852, 1336], 9: [852, 1477], 0: [941, 1336] };
+
+  Object.assign(SFX, {
+    setEnabled(v) { SFX.enabled = v; if (v) ac(); },
+    key(d = 5, when = 0) { const [a, b] = DTMF[d] || DTMF[5]; tone(a, 0.11, { gain: 0.07, when }); tone(b, 0.11, { gain: 0.07, when }); },
+    dial(digits = "4815", when = 0) { [...digits].forEach((d, i) => SFX.key(d, when + i * 0.13)); return digits.length * 0.13; },
+    ring(times = 2, when = 0) {           // classic double ring
+      for (let k = 0; k < times; k++) {
+        const t = when + k * 1.2;
+        [0, 0.55].forEach((o) => { tone(400, 0.4, { gain: 0.06, when: t + o }); tone(450, 0.4, { gain: 0.06, when: t + o }); });
+      }
+    },
+    pickup(when = 0) { noise(0.05, { gain: 0.5, freq: 1800, q: 0.8, when }); tone(120, 0.05, { gain: 0.15, when }); },
+    hangup(when = 0) {                    // click + short busy tone
+      noise(0.04, { gain: 0.5, freq: 1200, when });
+      for (let k = 0; k < 3; k++) tone(425, 0.2, { gain: 0.07, when: when + 0.15 + k * 0.4 });
+    },
+    chime(when = 0) { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.35, { type: "triangle", gain: 0.11, when: when + i * 0.09 })); },
+    blip(when = 0, f = 880) { tone(f, 0.04, { type: "square", gain: 0.03, when }); },
+    tick(when = 0) { noise(0.02, { gain: 0.25, freq: 3500, q: 2, when }); },
+    type(n = 12, when = 0) { for (let i = 0; i < n; i++) noise(0.025, { gain: 0.22, freq: 2500 + Math.random() * 1500, q: 3, when: when + i * (0.045 + Math.random() * 0.04) }); },
+    print(dur = 1.6, when = 0) {          // dot-matrix head going back and forth
+      for (let t = 0; t < dur; t += 0.028) noise(0.02, { gain: 0.12, freq: 1400 + (Math.sin(t * 9) * 500), q: 6, when: when + t });
+      tone(55, dur, { type: "sawtooth", gain: 0.02, when });
+    },
+    stamp(when = 0) { tone(110, 0.18, { gain: 0.35, when, slide: 45 }); noise(0.12, { gain: 0.4, freq: 600, q: 0.7, when }); },
+    pin(when = 0) { tone(1900, 0.05, { type: "triangle", gain: 0.08, when }); noise(0.03, { gain: 0.2, freq: 4000, when }); },
+    whoosh(when = 0) { noise(0.55, { gain: 0.35, freq: 300, sweep: 3000, q: 0.9, when }); },
+    flip(when = 0) { noise(0.12, { gain: 0.3, freq: 900, sweep: 2600, q: 1.2, when }); },
+    punch(when = 0) { tone(90, 0.25, { gain: 0.4, when, slide: 40 }); noise(0.08, { gain: 0.6, freq: 900, q: 0.6, when: when + 0.02 }); tone(1600, 0.06, { type: "square", gain: 0.05, when: when + 0.28 }); },
+    swoop(when = 0) { tone(300, 0.35, { type: "sine", gain: 0.08, when, slide: 900 }); },
+  });
+  window.SFX = SFX;
+})();
+
+</script>
+<script>
+/* ==========================================================================
+   Scene logic for "The Call" (agent's-desk edition).
+   Real numbers: data/eda.js · team plan: data/models.js ·
+   results (simulated until final): data/results.js · real client rows: data/opening_sample.js
+   ========================================================================== */
+(function () {
+  const E = window.EDA, R = window.RESULTS, M = window.MODELS, SAMPLE = window.SAMPLE || [];
+  const SFX = window.SFX || new Proxy({}, { get: () => () => 0 });
+  const $ = (s, r = document) => r.querySelector(s);
+  const NS = "http://www.w3.org/2000/svg";
+  const pct = (v, d = 1) => (v * 100).toFixed(d) + "%";
+  const fmt = (n) => Math.round(n).toLocaleString("en-US");
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  function svgEl(tag, attrs = {}, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+
+  /* real numbers into [data-eda] */
+  const T = { rawRows: fmt(E.rawRows), cleanRows: fmt(E.cleanRows), yes: fmt(E.yes), no: fmt(E.no), overall: pct(E.overall) };
+  document.querySelectorAll("[data-eda]").forEach((el) => (el.textContent = T[el.dataset.eda]));
+
+  /* tooltip */
+  const tip = document.getElementById("tip"), stage = document.getElementById("stage");
+  function showTip(e, html) {
+    const r = stage.getBoundingClientRect(), s = r.width / 1920;
+    tip.innerHTML = html; tip.classList.add("show");
+    tip.style.left = Math.min((e.clientX - r.left) / s + 18, 1920 - tip.offsetWidth - 20) + "px";
+    tip.style.top = ((e.clientY - r.top) / s - tip.offsetHeight - 14) + "px";
+  }
+  const bindTip = (el, html) => { el.addEventListener("mousemove", (e) => showTip(e, html)); el.addEventListener("mouseleave", () => tip.classList.remove("show")); };
+
+  function confetti(x, y, n = 70) {
+    const cols = ["#f07a3e", "#ffd76a", "#f4ecdd", "#3fa34d"];
+    for (let k = 0; k < n; k++) {
+      const d = document.createElement("div"); d.className = "conf";
+      d.style.left = x + "px"; d.style.top = y + "px"; d.style.background = cols[k % 4];
+      d.style.setProperty("--dx", (Math.random() - .5) * 1400 + "px");
+      d.style.setProperty("--dy", (Math.random() * 900 - 300) + "px");
+      d.style.setProperty("--rot", Math.random() * 1080 + "deg");
+      stage.appendChild(d); setTimeout(() => d.remove(), 1700);
+    }
+  }
+
+  /* a small bar chart in the paper style */
+  function barChart(svg, data, { width, height, orient = "h", ref = null, refText = "", labelW = 240, mini = false }) {
+    svg.innerHTML = ""; svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    const max = Math.max(...data.map((d) => d.value), ref || 0) * 1.12;
+    const ember = css("--ember-d"), no = "#b7aa92";
+    if (orient === "h") {
+      const top = 6, bottom = mini ? 4 : 44, band = (height - top - bottom) / data.length, bh = Math.min(46, band * .64);
+      const x = (v) => labelW + (v / max) * (width - labelW - (mini ? 10 : 110));
+      if (ref != null && !mini) { const rx = x(ref); svgEl("line", { x1: rx, x2: rx, y1: 0, y2: height - bottom + 8, class: "chart-ref" }, svg); svgEl("text", { x: rx + 10, y: height - 6, class: "chart-ref-label" }, svg).textContent = refText; }
+      data.forEach((d, i) => {
+        const y = top + i * band + (band - bh) / 2;
+        if (!mini) svgEl("text", { x: labelW - 16, y: y + bh / 2 + 7, "text-anchor": "end", class: "chart-label" }, svg).textContent = d.label;
+        const r = svgEl("rect", { x: labelW, y, height: bh, width: 0, rx: mini ? 2 : 5, fill: d.value > ref ? ember : no, class: "bar" }, svg);
+        requestAnimationFrame(() => requestAnimationFrame(() => r.setAttribute("width", Math.max(2, x(d.value) - labelW))));
+        if (!mini) {
+          svgEl("text", { x: x(d.value) + 12, y: y + bh / 2 + 10, class: "chart-val" }, svg).textContent = d.text;
+          const hit = svgEl("rect", { x: 0, y: top + i * band, width, height: band, class: "hit" }, svg); bindTip(hit, d.tip);
+        }
+      });
+    } else {
+      const top = mini ? 4 : 40, bottom = mini ? 2 : 50, band = width / data.length, bw = Math.min(mini ? 30 : 80, band * .62);
+      const y = (v) => height - bottom - (v / max) * (height - top - bottom);
+      if (ref != null && !mini) { const ry = y(ref); svgEl("line", { x1: 0, x2: width, y1: ry, y2: ry, class: "chart-ref" }, svg); svgEl("text", { x: width, y: ry - 10, "text-anchor": "end", class: "chart-ref-label" }, svg).textContent = refText; }
+      data.forEach((d, i) => {
+        const cx = i * band + band / 2;
+        const r = svgEl("rect", { x: cx - bw / 2, y: height - bottom, width: bw, height: 0, rx: mini ? 2 : 5, fill: d.value > ref ? ember : no, class: "bar" }, svg);
+        requestAnimationFrame(() => requestAnimationFrame(() => { r.setAttribute("y", y(d.value)); r.setAttribute("height", height - bottom - y(d.value)); }));
+        if (!mini) {
+          svgEl("text", { x: cx, y: y(d.value) - 12, "text-anchor": "middle", class: "chart-val" }, svg).textContent = d.text;
+          svgEl("text", { x: cx, y: height - bottom + 32, "text-anchor": "middle", class: "chart-label" }, svg).textContent = d.label;
+          const hit = svgEl("rect", { x: i * band, y: 0, width: band, height, class: "hit" }, svg); bindTip(hit, d.tip);
+        }
+      });
+    }
+  }
+
+  /* ======================================================================
+     01 — THE SHIFT: the phone game
+     ====================================================================== */
+  const shift = (() => {
+    const lcd = $("#g-lcd"), phone = $("#g-phone");
+    const AVG = 258.3, TOTAL = E.cleanRows, TOTAL_YES = E.yes, HOURS = 2955;
+    const NO_REACT = ["Not interested.", "I’m driving!", "*click*", "Who gave you this number?", "My money lives under the mattress.", "Call me never.", "Sorry, wrong time.", "I already said no in May."];
+    const MON = { mar: "Mar", apr: "Apr", may: "May", jun: "Jun", jul: "Jul", aug: "Aug", sep: "Sep", oct: "Oct", nov: "Nov", dec: "Dec" };
+    let st, run = 0;
+    const idle = () => {
+      lcd.innerHTML = `<div class="bar"><span>DESK 07</span><span>09:00</span></div><div class="main">SHIFT STARTED</div>
+        <div class="main" style="margin-top:22px">${fmt(TOTAL)} clients<br>on your list</div><div class="main blink" style="margin-top:40px">&gt; press CALL</div>`;
+    };
+    const stats = () => { $("#g-calls").textContent = fmt(st.calls); $("#g-yes").textContent = fmt(st.yes); $("#g-hours").textContent = st.calls > 1000 ? fmt(st.calls * AVG / 3600) : (st.calls * AVG / 3600).toFixed(1); };
+    function reset() {
+      run++; st = { i: 0, calls: 0, yes: 0, busy: false, done: false };
+      $("#g-log").innerHTML = ""; $("#g-auto").classList.remove("show"); $("#g-call").disabled = false;
+      $("#g-finale").classList.remove("on", "q"); lcd.classList.remove("flash"); phone.classList.remove("vibrate");
+      stats(); idle();
+    }
+    async function call() {
+      if (st.busy || st.done) return;
+      const c = SAMPLE[st.i % SAMPLE.length]; if (!c) return;
+      const me = run;
+      st.busy = true; $("#g-call").disabled = true;
+      $("#g-call").classList.add("press"); setTimeout(() => $("#g-call").classList.remove("press"), 120);
+      const digits = String(1000 + ((c.row * 7919) % 9000));
+      const dialT = SFX.dial(digits) || 0.5;
+      lcd.innerHTML = `<div class="bar"><span>CLIENT #${fmt(c.row + 1)}</span><span>☎</span></div>
+        <div class="row"><span>age</span><span>${c.age}</span></div><div class="row"><span>job</span><span>${c.job}</span></div>
+        <div class="row"><span>phone</span><span>${c.contact === "cellular" ? "mobile" : "landline"}</span></div>
+        <div class="row"><span>when</span><span>${MON[c.month] || c.month} · ${c.day_of_week}</span></div>
+        <div class="row"><span>past campaign</span><span>${c.poutcome === "nonexistent" ? "none" : c.poutcome}</span></div>
+        <div class="main" style="margin-top:14px">ringing<span class="blink">...</span></div>`;
+      await sleep(dialT * 1000 + 100); if (me !== run) return;
+      SFX.ring(1); phone.classList.add("vibrate");
+      await sleep(1250); if (me !== run) return;
+      phone.classList.remove("vibrate");
+      st.calls++; st.i++;
+      const yes = c.y === 1; if (yes) st.yes++;
+      lcd.querySelectorAll(".row").forEach((b, k) => { if (k > 2) b.remove(); });
+      lcd.querySelector(".main").outerHTML = yes
+        ? `<div class="big">YES!</div><div class="react">“OK… tell me more.”</div>`
+        : `<div class="big">NO.</div><div class="react">“${NO_REACT[(st.calls * 3) % NO_REACT.length]}”</div>`;
+      SFX.pickup(); if (yes) { SFX.chime(0.15); confetti(520, 330); } else SFX.hangup(0.4);
+      const dot = document.createElement("i"); dot.className = yes ? "y" : ""; dot.textContent = yes ? "Y" : "N"; $("#g-log").appendChild(dot);
+      stats();
+      if (st.calls >= 5) $("#g-auto").classList.add("show");
+      await sleep(450);
+      st.busy = false; $("#g-call").disabled = false;
+    }
+    async function autodial() {
+      if (st.done || st.busy) return;
+      const me = run;
+      st.busy = true; st.done = true; $("#g-auto").classList.remove("show"); $("#g-call").disabled = true;
+      lcd.classList.add("flash"); phone.classList.add("vibrate");
+      const c0 = st.calls, y0 = st.yes, t0 = performance.now(), dur = 5200; let lastBlip = 0;
+      await new Promise((res) => {
+        const step = (t) => {
+          if (me !== run) return res();
+          const p = Math.min(1, (t - t0) / dur), e = p * p;
+          st.calls = Math.round(c0 + (TOTAL - c0) * e); st.yes = Math.round(y0 + (TOTAL_YES - y0) * e); stats();
+          const y = Math.random() < E.overall;
+          lcd.innerHTML = `<div class="bar"><span>AUTO-DIAL</span><span>${Math.round(p * 100)}%</span></div><div class="big">${y ? "YES" : "NO."}</div><div class="main">call ${fmt(st.calls)}</div>`;
+          if (t - lastBlip > 70) { SFX.blip(0, y ? 1320 : 660 + Math.random() * 200); lastBlip = t; }
+          if (Math.random() < .35) { const d = document.createElement("i"); d.className = y ? "y" : ""; d.textContent = y ? "Y" : "N"; const log = $("#g-log"); log.appendChild(d); if (log.children.length > 48) log.firstChild.remove(); }
+          p < 1 ? requestAnimationFrame(step) : res();
+        };
+        requestAnimationFrame(step);
+      });
+      if (me !== run) return;
+      $("#g-hours").textContent = fmt(HOURS);
+      lcd.classList.remove("flash"); phone.classList.remove("vibrate");
+      lcd.innerHTML = `<div class="bar"><span>LIST DONE</span><span>2010</span></div><div class="main">${fmt(TOTAL)} calls</div><div class="main">${fmt(TOTAL_YES)} yes</div><div class="big" style="margin-top:20px">${pct(E.overall)}</div>`;
+      SFX.chime();
+      await sleep(1500); if (me !== run) return;
+      $("#g-finale").classList.add("on"); SFX.hangup();
+      await sleep(2600); if (me !== run) return;
+      $("#g-finale").classList.add("q"); st.busy = false;
+    }
+    $("#g-call").addEventListener("click", call);
+    $("#g-end").addEventListener("click", () => { if (!st.busy && !st.done) { SFX.hangup(); idle(); } });
+    $("#g-auto").addEventListener("click", autodial);
+    $("#g-phone .pad").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; SFX.key(b.textContent); b.classList.add("press"); setTimeout(() => b.classList.remove("press"), 120); });
+    reset();
+    return {
+      enter(s, revealAll) { reset(); if (revealAll) { st.done = true; $("#g-finale").classList.add("on", "q"); } },
+      leave() { run++; phone.classList.remove("vibrate"); },
+      key(e) {
+        const fin = $("#g-finale");
+        if (e.key === " " || e.key === "Enter") { if (!st.done) { call(); return true; } return false; }
+        if (e.key === "a" || e.key === "A") { autodial(); return true; }
+        if (e.key === "ArrowRight" || e.key === "PageDown") {
+          if (!st.done) { st.calls >= 5 ? autodial() : call(); return true; }
+          if (fin.classList.contains("on") && !fin.classList.contains("q")) { fin.classList.add("q"); return true; }
+          if (st.busy) return true;
+        }
+        return false;
+      },
+    };
+  })();
+
+  /* ======================================================================
+     02 — THE MISSION
+     ====================================================================== */
+  const caseFile = {
+    enter(s, revealAll) {
+      const f = $("#folder"); if (!f) return; f.classList.add("closed");
+      if (revealAll) { f.classList.remove("closed"); return; }
+      setTimeout(() => { f.classList.remove("closed"); SFX.flip(); }, 500);
+    },
+    stamp(s, on) { if (on) SFX.stamp(0.12); },
+  };
+
+  /* ======================================================================
+     03 — THE CALL LIST
+     ====================================================================== */
+  const callList = (() => {
+    const box = $("#dots");
+    const YES = new Set([3, 17, 22, 38, 45, 51, 60, 74, 79, 86, 93].slice(0, Math.round(E.overall * 100)));
+    const dots = [...Array(100)].map((_, i) => { const d = document.createElement("i"); if (YES.has(i)) { d.className = "y"; d.textContent = "Y"; } box.appendChild(d); return d; });
+    let run = 0;
+    return {
+      enter(s, revealAll) {
+        const me = ++run; dots.forEach((d) => d.classList.remove("on"));
+        if (revealAll) { dots.forEach((d) => d.classList.add("on")); return; }
+        dots.forEach((d, i) => setTimeout(() => { if (me !== run) return; d.classList.add("on"); if (d.classList.contains("y")) SFX.blip(0, 1320); else if (i % 6 === 0) SFX.tick(); }, 300 + i * 28));
+      },
+      pin(s, on) { if (on) SFX.pin(); },
+    };
+  })();
+  /* ======================================================================
+     04 — THE CLUES
+     ====================================================================== */
+  const S = E.signals, find = (a, l) => a.find((d) => d.label === l);
+  const CLUES = [
+    { key: "poutcome", orient: "h", labelW: 330, short: "A past “yes” comes back",
+      big: () => pct(find(S.poutcome, "Success").rate, 0), note: () => `said yes again · vs ${pct(E.overall)} overall`,
+      head: () => `Said yes before? <em>${pct(find(S.poutcome, "Success").rate, 0)}</em> say yes again.`,
+      sub: () => `Previous campaign = success → ${pct(find(S.poutcome, "Success").rate)} yes, against ${pct(E.overall)} overall. Only ${fmt(find(S.poutcome, "Success").n)} clients had one.` },
+    { key: "contact", orient: "h", labelW: 220, short: "Mobile beats landline",
+      big: () => (find(S.contact, "Mobile").rate / find(S.contact, "Landline").rate).toFixed(1) + "×", note: () => `more yes on mobile than landline`,
+      head: () => `Mobile calls convert <em>${(find(S.contact, "Mobile").rate / find(S.contact, "Landline").rate).toFixed(1)}×</em> better.`,
+      sub: () => `${pct(find(S.contact, "Mobile").rate)} yes on mobile vs ${pct(find(S.contact, "Landline").rate)} on landline.` },
+    { key: "month", orient: "v", short: "The busiest month was the worst",
+      big: () => pct(find(S.month, "May").rate, 1), note: () => `yes in May, the busiest month`,
+      head: () => `May: the busiest month, <em>the worst</em> month.`,
+      sub: () => `May had ${fmt(find(S.month, "May").n)} calls and ${pct(find(S.month, "May").rate)} yes. Mar, Sep, Oct and Dec: few calls, 44–51% yes.` },
+    { key: "calls", orient: "v", short: "More calls, lower odds",
+      big: () => `${pct(S.calls[0].rate, 0)} → ${pct(S.calls[S.calls.length - 1].rate, 0)}`, note: () => `1st call vs 10+ calls`,
+      head: () => `Every extra call <em>lowers</em> the odds.`,
+      sub: () => `${pct(S.calls[0].rate)} yes on the 1st call of a campaign, ${pct(S.calls[S.calls.length - 1].rate)} after 10 or more.` },
+    { key: "economy", orient: "v", short: "The economy sets the mood",
+      big: () => (S.economy[0].rate / S.economy[2].rate).toFixed(0) + "×", note: () => `more yes when employment was low`,
+      head: () => `Yes was <em>${(S.economy[0].rate / S.economy[2].rate).toFixed(0)}× more common</em> when employment was low.`,
+      sub: () => `Employed people (quarterly indicator, thousands). Strongest numeric link to y (r = ${E.corr["nr.employed"].toFixed(2)}). A pattern in time, not a cause.` },
+    { key: "job", orient: "h", labelW: 220, short: "Students & retirees are most open",
+      big: () => pct(find(S.job, "student").rate, 0), note: () => `of students said yes · retired ${pct(find(S.job, "retired").rate, 0)}`,
+      head: () => `Students and retirees are the <em>most open</em>.`,
+      sub: () => `Students ${pct(find(S.job, "student").rate)}, retired ${pct(find(S.job, "retired").rate)}. Blue-collar workers ${pct(find(S.job, "blue-collar").rate)}.` },
+  ];
+  const clues = (() => {
+    const wrap = $("#clues"), detail = $("#clue-detail");
+    const POS = [0, 1, 2, 3, 4, 5].map((i) => [90 + (i % 3) * 590, 280 + Math.floor(i / 3) * 360, 0]);
+    const cards = CLUES.map((c, i) => {
+      const b = document.createElement("button");
+      b.className = "clue"; b.style.left = POS[i][0] + "px"; b.style.top = POS[i][1] + "px";
+      b.innerHTML = `<small>CLUE ${String(i + 1).padStart(2, "0")}</small><h4>${c.short}</h4><div class="c-big">${c.big()}</div><div class="c-note">${c.note()}</div><svg></svg>`;
+      b.addEventListener("click", () => open(i));
+      wrap.appendChild(b);
+      const data = S[c.key].map((d) => ({ value: d.rate }));
+      barChart(b.querySelector("svg"), data, { width: 300, height: 70, orient: c.orient === "h" && data.length > 3 ? "v" : c.orient, ref: E.overall, mini: true, labelW: 0 });
+      return b;
+    });
+    let current = -1;
+    function open(i) {
+      current = i; const c = CLUES[i];
+      cards.forEach((b, k) => b.classList.toggle("on", k === i));
+      $(".d-num", detail).textContent = `CLUE ${String(i + 1).padStart(2, "0")} / 06`;
+      $("h3", detail).innerHTML = c.head(); $("p", detail).textContent = c.sub();
+      const data = S[c.key].map((d) => ({ label: d.label, value: d.rate, text: pct(d.rate, d.rate < .1 ? 1 : 0), tip: `<b>${pct(d.rate)}</b> said yes · ${d.label} · ${fmt(d.n)} clients` }));
+      barChart($("#clue-chart"), data, { width: 1072, height: 440, orient: c.orient, ref: E.overall, refText: `overall ${pct(E.overall)}`, labelW: c.labelW || 200 });
+      detail.classList.add("open"); SFX.pin();
+    }
+    function close() { detail.classList.remove("open"); cards.forEach((b) => b.classList.remove("on")); current = -1; }
+    $("#clue-close").addEventListener("click", (e) => { e.stopPropagation(); close(); });
+    let step = -1;
+    return {
+      enter() { close(); step = -1; },
+      next(s, on) { if (on) { step = Math.min(step + 1, CLUES.length - 1); open(step); } else { step = Math.max(step - 1, -1); step < 0 ? close() : open(step); } },
+      close(s, on) { if (on) close(); else open(CLUES.length - 1); },
+    };
+  })();
+
+  /* ======================================================================
+     05 — THE CLEAN-UP (terminal)
+     ====================================================================== */
+  const STEPS = [
+    { label: "Load raw data", cmd: "load bank-additional-full.csv", out: [`${fmt(E.rawRows)} rows × ${E.rawCols} columns · ${E.missing} empty cells`], rows: E.rawRows, cols: 21 },
+    { label: "Remove duplicates", cut: 1, cmd: "drop_duplicates()", out: [`${E.duplicates} copies removed → ${fmt(E.cleanRows)} rows`], rows: E.cleanRows, cols: 21 },
+    { label: "Keep “unknown” & outliers", cmd: "keep \"unknown\" + outliers", out: ["they are real answers, not errors"], rows: E.cleanRows, cols: 21 },
+    { label: "Drop duration (leakage!)", cut: 1, cmd: "drop(\"duration\")", warn: `!! yes-calls last ${E.durationMean.yes} s, no-calls ${E.durationMean.no} s`, why: "known only AFTER the call = cheating", rows: E.cleanRows, cols: 20 },
+    { label: "Flag pdays", cmd: "pdays_recorded = pdays != 999", out: [`${pct(E.pdaysNotRecorded / E.rawRows)} were never contacted before`], rows: E.cleanRows, cols: 21 },
+    { label: "Target yes/no → 1/0", cmd: "y = (y == \"yes\")", out: [`${pct(E.overall)} are 1 (yes)`], rows: E.cleanRows, cols: 21 },
+    { label: "Split 70 / 15 / 15", cmd: "train_test_split(stratify=y, seed=42)", out: [`train ${fmt(E.split.train)} · val ${fmt(E.split.val)} · test ${fmt(E.split.test)}`], rows: E.cleanRows, cols: 21, split: 1 },
+    { label: "Encode & scale", cmd: "fit encoder + scaler on train only", out: ["test set stays unseen ✓ READY"], rows: E.cleanRows, cols: 21 },
+  ];
+  const cleanup = (() => {
+    const term = $("#term"), list = $("#steps-list"), rowsEl = $("#g-rows"), colsEl = $("#g-cols");
+    list.innerHTML = STEPS.map((s, i) => `<div class="${s.cut ? "cut" : ""}"><i></i>${s.label}</div>`).join("");
+    let shown = 0, run = 0, rowsNow = 0;
+    function lineHTML(s) {
+      return `<div class="cmd">${s.cmd}</div>` + (s.out || []).map((o) => `<div class="out">${o}</div>`).join("") +
+        (s.warn ? `<div class="warn">${s.warn}</div>` : "") + (s.why ? `<div class="why">→ ${s.why}</div>` : "");
+    }
+    function countTo(v) {
+      const from = rowsNow, t0 = performance.now();
+      const step = (t) => { const p = Math.min(1, (t - t0) / 700); rowsEl.textContent = fmt(from + (v - from) * p); p < 1 && requestAnimationFrame(step); };
+      requestAnimationFrame(step); rowsNow = v;
+    }
+    function sideFor(n) {
+      [...list.children].forEach((d, k) => d.classList.toggle("done", k < n));
+      const s = STEPS[n - 1]; if (!s) return;
+      countTo(s.rows); colsEl.textContent = `× ${s.cols} columns`;
+      $("#split-bar").classList.toggle("on", n >= 7);
+    }
+    function render(n) { // instant
+      run++; shown = n;
+      term.innerHTML = STEPS.slice(0, n).map(lineHTML).join("") + `<div class="cmd"><span class="cursor"></span></div>`;
+      sideFor(n);
+    }
+    async function typeStep(n) { // animate step n (1-based)
+      const me = ++run; shown = n;
+      term.innerHTML = STEPS.slice(0, n - 1).map(lineHTML).join("");
+      const s = STEPS[n - 1];
+      const line = document.createElement("div"); line.className = "cmd"; term.appendChild(line);
+      SFX.type(Math.min(18, s.cmd.length));
+      for (let k = 1; k <= s.cmd.length; k++) { if (me !== run) return; line.textContent = s.cmd.slice(0, k); await sleep(22); }
+      await sleep(250); if (me !== run) return;
+      const rest = document.createElement("div"); rest.innerHTML = lineHTML(s).replace(/^<div class="cmd">.*?<\/div>/, ""); term.appendChild(rest);
+      if (s.warn) SFX.hangup(); else SFX.blip(0, 1200);
+      term.insertAdjacentHTML("beforeend", `<div class="cmd"><span class="cursor"></span></div>`);
+      sideFor(n);
+    }
+    return {
+      enter(s, revealAll) { rowsNow = 0; if (revealAll) render(STEPS.length); else { render(0); setTimeout(() => typeStep(1), 400); } },
+      step(s, on) { on ? typeStep(Math.min(shown + 1, STEPS.length)) : render(Math.max(shown - 1, 1)); },
+    };
+  })();
+
+  /* ======================================================================
+     06 — THE TRAINEES (ID badges)
+     ====================================================================== */
+  function glyph(kind) {
+    const cols = { ann: [6, 5, 3, 1], emb: [2, 2, 2, 5, 3, 1], tuner: [5, 4, 4, 2, 1], ae: [6, 4, 2, 4, 6], anomaly: [6, 4, 2, 4, 6] }[kind];
+    const svg = document.createElementNS(NS, "svg"); svg.setAttribute("viewBox", "0 0 120 80");
+    const gap = 120 / (cols.length + 1);
+    cols.forEach((n, ci) => { for (let k = 0; k < n; k++) {
+      const hot = (kind === "anomaly" && ci === cols.length - 1 && k === 0) || (ci === cols.length - 1 && n === 1);
+      svgEl("circle", { cx: gap * (ci + 1), cy: 40 + (k - (n - 1) / 2) * 11, r: 3.6, fill: hot ? "#f07a3e" : "#c9bfae" }, svg);
+    } });
+    return svg;
+  }
+  const trainees = (() => {
+    const memo = $("#memo"), wrap = $("#badges");
+    window.SHARED_SETUP.slice(0, 3).forEach((t, i) => { const li = document.createElement("li"); li.textContent = t; li.style.setProperty("--rot", (i % 2 ? 1.5 : -1.2) + "deg"); memo.appendChild(li); });
+    const COLORS = ["#2a78d6", "#1baf7a", "#6250d6", "#c98500", "#d2453b"];
+    const badges = M.map((m, i) => {
+      const hang = document.createElement("div"); hang.className = "badge-hang"; hang.style.setProperty("--d", -i * .7 + "s");
+      const stCls = m.status === "Trained" ? "go" : m.status === "Notebook ready" ? "ready" : "";
+      hang.innerHTML = `<div class="badge" data-interactive style="--c:${COLORS[i]}"><div class="in">
+        <div class="face front"><div class="band">TRAINEE · ${m.family === "ANN" ? "NEURAL NET" : "AUTOENCODER"}</div><div class="pic"></div>
+          <div class="nm">${m.name}</div><div class="tt">${m.title}</div><div class="st ${stCls}">${m.status}</div></div>
+        <div class="face back"><h5>${m.title}</h5><p>${m.idea}</p>
+          <dl>${m.config.slice(0, 2).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>
+          <div class="out"><b>Key output →</b> ${m.output}</div></div></div></div>`;
+      hang.querySelector(".pic").appendChild(glyph(m.glyph));
+      const b = hang.querySelector(".badge");
+      b.addEventListener("click", () => { b.classList.toggle("flipped"); SFX.flip(); });
+      wrap.appendChild(hang); return b;
+    });
+    let n = 0;
+    return {
+      enter() { badges.forEach((b) => b.classList.remove("flipped")); n = 0; },
+      next(s, on) {
+        if (on) { badges.forEach((b) => b.classList.remove("flipped")); badges[n] && badges[n].classList.add("flipped"); n = Math.min(n + 1, badges.length); SFX.flip(); }
+        else { n = Math.max(n - 1, 0); badges.forEach((b) => b.classList.remove("flipped")); if (n > 0) badges[n - 1].classList.add("flipped"); }
+      },
+    };
+  })();
+
+  /* ======================================================================
+     07 — THE SCOREBOARD
+     ====================================================================== */
+  const METRICS = [
+    { key: "accuracy", name: "ACCURACY", base: (t) => t.no / t.rows, explain: "<b>Accuracy:</b> share predicted right. “Always no” gets 88.7%!" },
+    { key: "precision", name: "PRECISION", base: null, explain: "<b>Precision:</b> of those we call, how many say yes." },
+    { key: "recall", name: "RECALL", base: () => 0, explain: "<b>Recall:</b> of all the yes clients, how many we find." },
+    { key: "f1", name: "F1", base: () => 0, explain: "<b>F1:</b> precision and recall in one number." },
+    { key: "roc_auc", name: "ROC-AUC", base: () => 0.5, explain: "<b>ROC-AUC:</b> ranking quality. 0.5 = coin flip." },
+    { key: "pr_auc", name: "PR-AUC", base: (t) => t.yes / t.rows, explain: "<b>PR-AUC:</b> the fairest score when only 11% say yes." },
+  ];
+  const metricsOf = (m) => { const { tp, fn, fp, tn } = m.cm, p = tp / (tp + fp), r = tp / (tp + fn); return { accuracy: (tp + tn) / (tp + fn + fp + tn), precision: p, recall: r, f1: 2 * p * r / (p + r), roc_auc: m.roc_auc, pr_auc: m.pr_auc }; };
+  const scoreboard = (() => {
+    const status = R.status, rowsEl = $("#sb-rows"), pad = $("#metric-pad");
+    const sticker = $("#sim-sticker");
+    if (status === "simulated") sticker.innerHTML = "SIMULATED · NOT REAL RESULTS";
+    else if (status === "awaiting") sticker.innerHTML = "AWAITING FINAL<br>MODEL RESULTS";
+    else sticker.style.display = "none";
+    let metric = 5, chosen = Math.max(0, R.models.findIndex((m) => m.id === R.finalModel)), sel = chosen;
+    METRICS.forEach((mt, i) => {
+      const b = document.createElement("button"); b.innerHTML = `<b>${i + 1}</b><span>${mt.name}</span>`;
+      b.addEventListener("click", () => setMetric(i)); pad.appendChild(b);
+    });
+    function setMetric(i) { metric = i; SFX.key(i + 1); const b = pad.children[i]; b.classList.add("press"); setTimeout(() => b.classList.remove("press"), 120); draw(); }
+    function draw() {
+      const mt = METRICS[metric];
+      [...pad.children].forEach((b, k) => b.classList.toggle("on", k === metric));
+      $("#sb-metric").textContent = mt.name; $("#sb-explain").innerHTML = mt.explain;
+      const fmtV = (v) => mt.key === "accuracy" ? pct(v) : v.toFixed(3);
+      let html = R.models.map((m, i) => {
+        if (status === "awaiting") return `<div class="sb-row" data-i="${i}"><span>${m.name} ${m.title.split(" ")[0]}</span><span class="await">AWAITING RESULTS</span><span class="v">--</span></div>`;
+        const v = metricsOf(m)[mt.key];
+        return `<div class="sb-row ${i === chosen ? "chosen" : ""} ${i === sel ? "sel" : ""}" data-i="${i}"><span>${m.name} ${m.title.split(" ")[0]}</span><span class="track"><span class="fill" style="width:0" data-w="${v * 100}"></span></span><span class="v">${fmtV(v)}</span></div>`;
+      }).join("");
+      const base = mt.base ? mt.base(R.testSet) : null;
+      html += `<div class="sb-row base"><span>ALWAYS “NO”</span><span class="track"><span class="fill" style="width:${base == null ? 0 : base * 100}%"></span></span><span class="v">${base == null ? "n/a" : fmtV(base)}</span></div>`;
+      rowsEl.innerHTML = html;
+      requestAnimationFrame(() => requestAnimationFrame(() => rowsEl.querySelectorAll(".fill[data-w]").forEach((f) => (f.style.width = f.dataset.w + "%"))));
+      rowsEl.querySelectorAll(".sb-row[data-i]").forEach((r) => r.addEventListener("click", (e) => { e.stopPropagation(); sel = +r.dataset.i; SFX.blip(0, 990); draw(); }));
+      drawCM();
+    }
+    function drawCM() {
+      const m = R.models[sel];
+      $("#cm-name").textContent = `${m.name} · ${m.title}`;
+      ["tp", "fn", "fp", "tn"].forEach((k) => ($("#cm-" + k).textContent = status === "awaiting" ? "--" : fmt(m.cm[k])));
+      const fin = R.models.find((x) => x.id === R.finalModel);
+      $("#eotm").innerHTML = status === "awaiting" || !fin
+        ? `<small>EMPLOYEE OF THE MONTH</small><div class="who">Awaiting results</div><p>The final model is chosen when every model has been tested.</p>`
+        : `<small>EMPLOYEE OF THE MONTH${status === "simulated" ? " · SIMULATED" : ""}</small><div class="who"><em>${fin.name}</em></div><p>${fin.title}</p>`;
+    }
+    return {
+      enter() { draw(); },
+      next(s, on) { if (on) setMetric((metric + 1) % METRICS.length); },
+      key(e) { const d = +e.key; if (d >= 1 && d <= 6) { setMetric(d - 1); return true; } return false; },
+    };
+  })();
+
+  /* ======================================================================
+     08 — THE SMART LIST
+     ====================================================================== */
+  const smart = (() => {
+    const q = $("#queue"), N = 50, COLS = 10, SIZE = 88, GAP = 14;
+    const yesCount = Math.round(N * E.overall);            // ≈ 6 at the real rate
+    const todayYes = [4, 13, 22, 31, 40, 47].slice(0, yesCount);
+    const rankYes = [0, 1, 3, 6, 12, 28].slice(0, yesCount); // illustration: good but not perfect
+    const cards = [];
+    for (let i = 0; i < N; i++) {
+      const c = document.createElement("div"); const y = todayYes.includes(i);
+      c.className = "card" + (y ? " yes" : ""); c.textContent = y ? "✓" : String(i + 1); c.dataset.y = y ? 1 : 0; q.appendChild(c); cards.push(c);
+    }
+    // sorted order: yes cards to rankYes, the rest keep their order
+    const sortedPos = new Array(N); { let yi = 0; const free = [...Array(N).keys()].filter((k) => !rankYes.includes(k)); let fi = 0;
+      cards.forEach((c, i) => { sortedPos[i] = c.dataset.y === "1" ? rankYes[yi++] : free[fi++]; }); }
+    const place = (sorted) => cards.forEach((c, i) => { const p = sorted ? sortedPos[i] : i; c.style.transform = `translate(${(p % COLS) * (SIZE + GAP)}px, ${Math.floor(p / COLS) * (SIZE + GAP)}px)`; c.style.transitionDelay = (sorted ? (p % 10) * 20 : 0) + "ms"; });
+    const found = (sorted) => cards.filter((c, i) => c.dataset.y === "1" && (sorted ? sortedPos[i] : i) < 10).length;
+    let sorted = false;
+    function set(v, sound = true) {
+      sorted = v; $("#lever").classList.toggle("on", v); place(v);
+      $("#found").innerHTML = `yes in the first 10 calls: <b>${found(v)}</b> of ${yesCount}`;
+      if (sound) SFX.whoosh();
+    }
+    $("#lever button").addEventListener("click", (e) => { e.stopPropagation(); set(!sorted); });
+    return { enter() { set(false, false); }, sort(s, on) { set(on); } };
+  })();
+
+  /* ======================================================================
+     09 — THE DEMO (storyboard on the phone)
+     ====================================================================== */
+  const demo = (() => {
+    const lcd = $("#d-lcd"), list = $("#frames");
+    const ex = SAMPLE.find((c) => c.y === 1) || SAMPLE[0];
+    const SCREENS = [
+      { t: "The client", d: "Enter what the bank knows before the call.", lcd: () => `<div class="bar"><span>1 · CLIENT</span><span class="tag">PLANNED</span></div>
+          <div class="row"><span>age</span><span>${ex.age}</span></div><div class="row"><span>job</span><span>${ex.job}</span></div>
+          <div class="row"><span>phone</span><span>${ex.contact === "cellular" ? "mobile" : "landline"}</span></div><div class="row"><span>month</span><span>${ex.month}</span></div>
+          <div class="row"><span>past campaign</span><span>${ex.poutcome === "nonexistent" ? "none" : ex.poutcome}</span></div><div class="main blink" style="margin-top:10px">&gt; PREDICT</div>` },
+      { t: "The prediction", d: "The final model returns P(yes).", lcd: () => `<div class="bar"><span>2 · PREDICTION</span><span class="tag">PLANNED</span></div>
+          <div class="main">P(yes) =</div><div class="big">__%</div><div class="meter"><i class="blink" style="width:40%"></i></div><div class="main" style="font-size:30px">from the final model</div>` },
+      { t: "The risk band", d: "High / medium / low, threshold chosen on validation.", lcd: () => `<div class="bar"><span>3 · BAND</span><span class="tag">PLANNED</span></div>
+          <div class="main">&gt; HIGH</div><div class="main" style="opacity:.45">&nbsp; MEDIUM</div><div class="main" style="opacity:.45">&nbsp; LOW</div><div class="main" style="font-size:30px;margin-top:18px">cut-offs set on the validation set</div>` },
+      { t: "The reason", d: "Which inputs pushed the score up or down.", lcd: () => `<div class="bar"><span>4 · WHY</span><span class="tag">PLANNED</span></div>
+          <div class="main" style="font-size:34px">top factors, e.g.</div><div class="row"><span>past success</span><span>▲▲▲</span></div><div class="row"><span>mobile</span><span>▲</span></div><div class="row"><span>month = May</span><span>▼</span></div><div class="main" style="font-size:28px;margin-top:10px">examples from EDA, not model output</div>` },
+      { t: "The next step", d: "A suggestion: call now, later, or skip.", lcd: () => `<div class="bar"><span>5 · NEXT STEP</span><span class="tag">PLANNED</span></div>
+          <div class="main">&gt; CALL TODAY</div><div class="main" style="opacity:.45">&nbsp; CALL LATER</div><div class="main" style="opacity:.45">&nbsp; SKIP THIS CAMPAIGN</div><div class="main" style="font-size:30px;margin-top:18px">the agent decides</div>` },
+    ];
+    list.innerHTML = SCREENS.map((s, i) => `<button data-i="${i}"><b>${i + 1}</b><span>${s.t}</span><i>PLANNED</i></button>`).join("");
+    let cur = 0;
+    function show(i, sound = true) { cur = i; lcd.innerHTML = SCREENS[i].lcd(); [...list.children].forEach((b, k) => b.classList.toggle("on", k === i)); if (sound) { SFX.key(i + 1); SFX.blip(0.15, 1100); } }
+    list.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) show(+b.dataset.i); });
+    $("#d-call").addEventListener("click", (e) => { e.stopPropagation(); show(Math.min(cur + 1, 4)); });
+    $("#d-end").addEventListener("click", (e) => { e.stopPropagation(); show(0); });
+    $("#d-pad").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; e.stopPropagation(); const d = +b.textContent; d <= 5 ? show(d - 1) : SFX.key(d); });
+    const dl = R.demo || {};
+    if (dl.status === "ready" && dl.url) $("#demo-live").innerHTML = `<a href="${dl.url}" target="_blank" rel="noopener">OPEN THE LIVE DEMO →</a>`;
+    return {
+      enter(s, revealAll) { show(revealAll ? 4 : 0, false); },
+      next(s, on) { show(on ? Math.min(cur + 1, 4) : Math.max(cur - 1, 0)); },
+      key(e) { const d = +e.key; if (d >= 1 && d <= 5) { show(d - 1); return true; } return false; },
+    };
+  })();
+
+  /* ======================================================================
+     10 — END OF SHIFT
+     ====================================================================== */
+  const startDemo = $("#start-demo");
+  if (startDemo) startDemo.addEventListener("click", (e) => {
+    e.stopPropagation(); SFX.chime(0);
+    const d = R.demo || {};
+    if (d.status === "ready" && d.url) window.open(d.url, "_blank", "noopener");
+    else if (window.DECK) window.DECK.go(8);              // scene 09, the demo
+  });
+  const endShift = {
+    enter() { const c = $("#timecard"); c.className = "timecard"; },
+    cardin(s, on) { if (on) { $("#timecard").classList.add("in"); SFX.whoosh(); } },
+    punch(s, on) {
+      if (!on) return;
+      const c = $("#timecard"); SFX.punch(); c.classList.add("stamped");
+      setTimeout(() => { c.classList.remove("in"); c.classList.add("out"); SFX.chime(0.1); }, 650);
+    },
+  };
+
+  window.SCENES = { "01": shift, "02": caseFile, "03": callList, "04": clues, "05": cleanup, "06": trainees, "07": scoreboard, "08": smart, "09": demo, "10": endShift };
+})();
+
+</script>
+<script>
+/* ==========================================================================
+   Deck engine — fixed 1920×1080 stage, fragments, timed sequences, notes,
+   scene navigation, sound toggle. No dependencies, works from file://.
+
+   Keys:  → / Space / PgDn / Enter   next      ← / PgUp / Backspace   back
+          Home / End   first / last   F   full screen   N   notes
+          O / Esc   scene navigation    M   sound on / off
+   A scene can take keys first (scene.key(e) returns true when it used the key),
+   e.g. the phone game uses Space to dial.
+   Mouse: click right 70% = next, left 30% = back (not on buttons or props)
+   Touch: swipe left / right
+   ========================================================================== */
+(function () {
+  const stage = document.getElementById("stage");
+  const slides = [...stage.querySelectorAll(".slide")];
+  const progress = document.getElementById("progress");
+  const counter = document.getElementById("counter");
+  const notesEl = document.getElementById("notes");
+  const overview = document.getElementById("overview");
+  const SCENES = window.SCENES || {};
+  const SFX = window.SFX || { enabled: false, setEnabled() {} };
+
+  let index = 0, lock = false, timers = [];
+
+  function fit() {
+    const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    stage.style.transform = `translate(${-960 * s}px, ${-540 * s}px) scale(${s})`;
+  }
+  addEventListener("resize", fit); fit();
+
+  const frags = (s) => [...s.querySelectorAll(".f")].filter((f) => !f.hasAttribute("data-t"));
+  const timed = (s) => [...s.querySelectorAll(".f[data-t]")];
+  const scene = (s) => SCENES[s.dataset.scene] || {};
+
+  function show(s, f) {
+    f.classList.add("on");
+    const act = f.dataset.action; if (act && scene(s)[act]) scene(s)[act](s, true, f);
+  }
+  function hide(s, f) {
+    f.classList.remove("on");
+    const act = f.dataset.action; if (act && scene(s)[act]) scene(s)[act](s, false, f);
+  }
+  const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
+
+  function go(i, revealAll) {
+    if (i < 0 || i >= slides.length) return;
+    clearTimers();
+    const old = slides[index];
+    if (old && old !== slides[i]) { old.classList.remove("active"); scene(old).leave && scene(old).leave(old); }
+    index = i;
+    const s = slides[i];
+    s.querySelectorAll(".f").forEach((f) => f.classList.remove("on"));
+    s.classList.add("active");
+    scene(s).enter && scene(s).enter(s, revealAll);
+    if (revealAll) { timed(s).forEach((f) => show(s, f)); frags(s).forEach((f) => show(s, f)); }
+    else timed(s).forEach((f) => timers.push(setTimeout(() => show(s, f), +f.dataset.t)));
+    try { history.replaceState(null, "", "#" + (i + 1)); } catch (e) { /* not allowed in some frames */ }
+    updateChrome();
+  }
+
+  function next() {
+    if (lock) return;
+    const s = slides[index];
+    const pending = timed(s).filter((f) => !f.classList.contains("on"));
+    if (pending.length) {
+      clearTimers(); show(s, pending[0]);
+      const base = +pending[0].dataset.t;
+      pending.slice(1).forEach((f) => timers.push(setTimeout(() => show(s, f), +f.dataset.t - base)));
+      return;
+    }
+    const hidden = frags(s).filter((f) => !f.classList.contains("on"));
+    if (hidden.length) { show(s, hidden[0]); return; }
+    if (index < slides.length - 1) { lockFor(); go(index + 1); }
+  }
+  function prev() {
+    if (lock) return;
+    const s = slides[index];
+    const shown = frags(s).filter((f) => f.classList.contains("on"));
+    if (shown.length) { hide(s, shown[shown.length - 1]); return; }
+    if (index > 0) { lockFor(); go(index - 1, true); }
+  }
+  function lockFor() { lock = true; setTimeout(() => (lock = false), 700); }
+
+  /* chrome */
+  slides.forEach((s, i) => {
+    const b = document.createElement("button");
+    b.title = `${s.dataset.scene} — ${s.dataset.title}`; b.setAttribute("aria-label", b.title);
+    b.addEventListener("click", (e) => { e.stopPropagation(); go(i, true); });
+    progress.appendChild(b);
+  });
+  const grid = overview.querySelector(".grid");
+  slides.forEach((s, i) => {
+    const b = document.createElement("button");
+    b.className = "scene";
+    b.innerHTML = `<small>${s.dataset.scene}</small><span>${s.dataset.title}</span>`;
+    b.addEventListener("click", () => { toggleOverview(false); go(i, true); });
+    grid.insertBefore(b, grid.querySelector(".hint"));
+  });
+  function updateChrome() {
+    [...progress.children].forEach((b, i) => { b.classList.toggle("done", i < index); b.classList.toggle("current", i === index); });
+    [...grid.querySelectorAll(".scene")].forEach((b, i) => b.classList.toggle("current", i === index));
+    counter.textContent = `${slides[index].dataset.scene} / ${String(slides.length).padStart(2, "0")} · ${slides[index].dataset.title}`;
+    const n = slides[index].querySelector(".notes");
+    notesEl.innerHTML = `<h4>Presenter notes · ${slides[index].dataset.scene} · ${slides[index].dataset.title}</h4>` + (n ? n.innerHTML : "<p>No notes.</p>");
+  }
+  function toggleNotes(force) { const o = force ?? !notesEl.classList.contains("open"); notesEl.classList.toggle("open", o); document.getElementById("btn-notes")?.setAttribute("aria-pressed", o); }
+  function toggleOverview(force) { overview.classList.toggle("open", force ?? !overview.classList.contains("open")); }
+  function toggleFull() { if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {}); else document.exitFullscreen?.(); }
+  function syncSound() { const b = document.getElementById("btn-sound"); if (!b) return; b.setAttribute("aria-pressed", SFX.enabled); b.textContent = SFX.enabled ? "Sound on" : "Sound off"; }
+  function toggleSound() { SFX.setEnabled(!SFX.enabled); syncSound(); }
+  syncSound();
+
+  const bind = (id, fn) => document.getElementById(id)?.addEventListener("click", (e) => { e.stopPropagation(); fn(); });
+  bind("btn-notes", () => toggleNotes()); bind("btn-scenes", () => toggleOverview()); bind("btn-full", toggleFull);
+  bind("btn-sound", toggleSound); bind("btn-prev", prev); bind("btn-next", next);
+
+  addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea, select")) return;
+    if (overview.classList.contains("open") && !["o", "O", "Escape"].includes(e.key)) return;
+    const sc = scene(slides[index]);
+    if (sc.key && sc.key(e, slides[index])) { e.preventDefault(); return; }
+    switch (e.key) {
+      case "ArrowRight": case "PageDown": case " ": case "Enter": e.preventDefault(); next(); break;
+      case "ArrowLeft": case "PageUp": case "Backspace": e.preventDefault(); prev(); break;
+      case "Home": go(0); break;
+      case "End": go(slides.length - 1, true); break;
+      case "f": case "F": toggleFull(); break;
+      case "Escape": toggleOverview(false); toggleNotes(false); break;
+      case "m": case "M": toggleSound(); break;
+    }
+  });
+  document.getElementById("viewport").addEventListener("click", (e) => {
+    if (e.target.closest("button, a, input, select, [data-interactive], .hit")) return;
+    if (e.clientX < innerWidth * 0.3) prev(); else next();
+  });
+  let tx = null;
+  addEventListener("touchstart", (e) => { tx = e.touches[0].clientX; }, { passive: true });
+  addEventListener("touchend", (e) => { if (tx === null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) (dx < 0 ? next : prev)(); tx = null; });
+
+  const start = parseInt(location.hash.slice(1), 10);
+  go(Number.isFinite(start) && start > 0 ? Math.min(start, slides.length) - 1 : 0, Number.isFinite(start) && start > 1);
+  window.DECK = { go, next, prev, count: slides.length };
+})();
+
+</script>
+</body>
+</html>
