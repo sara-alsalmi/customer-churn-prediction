@@ -1,4 +1,5 @@
 import { localApi } from "./local-api.js";
+import { remoteVoiceRequest } from "./voice-service-client.js";
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -64,6 +65,7 @@ export function tween(from, to, ms, onStep) {
 }
 
 export async function api(path, body, opts = {}) {
+  if (window.CHURN_DESK_LOCAL && ["/api/tts","/api/stt"].includes(path)) return remoteVoiceRequest(path,body);
   if (window.CHURN_DESK_LOCAL) return localApi(path, body);
   const r = await fetch(path, {
     method: body === undefined ? "GET" : "POST",
