@@ -1,6 +1,7 @@
 // Hosted edition: real AE1 inference plus a local, explicitly simulated conversation.
 // Conversation text remains in this browser. The AE1 base score never uses duration.
 import { predictSubscription } from "./inference.js";
+import { getVoiceConfig } from "./voice-service-client.js";
 
 let bundle;
 const sessions = new Map();
@@ -95,7 +96,7 @@ function reply(s, sig, r) {
 
 export async function localApi(path, body) {
   const {model, customers, rules} = await data();
-  if (path === "/api/config") return { brain: "offline", voice: "browser", pool: customers.length,
+  if (path === "/api/config") return { brain: "offline", ...await getVoiceConfig(), pool: customers.length,
     model: { name: model.meta.name, kind: "keras", auc: rounded(model.meta.test_auc), features: model.meta.features,
       dataset: model.meta.dataset, target: model.meta.target, duration_used: false },
     signals: rules.SIGNALS.map((key) => ({ key, label: rules.SIGNAL_AR[key], negative: ["pressure", "rudeness"].includes(key) })) };

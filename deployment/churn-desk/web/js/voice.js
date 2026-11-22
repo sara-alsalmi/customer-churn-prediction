@@ -7,20 +7,26 @@ import { prefs } from "./prefs.js";
 let mode = "browser";
 export function setMode(m) { mode = m; }
 
+function announce(provider, status="playing") {
+  window.dispatchEvent(new CustomEvent("voice-status",{detail:{provider,status}}));
+}
+
 let current = null; // {stop}
 export function stopSpeaking() { current?.stop(); current = null; }
 
 export async function speak(text, gender, onLevel = () => {}) {
   stopSpeaking();
   if (mode === "elevenlabs") {
-    try { return await speakEleven(text, gender, onLevel); } catch (e) { console.warn("tts fell back", e); }
+    try { return await speakEleven(text, gender, onLevel); } catch (e) {
+      console.warn("ElevenLabs playback failed; using browser voice", e);
+      announce("browser","fallback");
+    }
   }
   return speakBrowser(text, gender, onLevel);
 }
 
 async function speakEleven(text, gender, onLevel) {
-  const r = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, gender }) });
-  if (!r.ok) throw new Error("tts " + r.status);
+  const r = await api("/api/tts", { text, gender });
   const url = URL.createObjectURL(await r.blob());
   const audio = new Audio(url);
   const ctx = audioCtx();
@@ -37,11 +43,13 @@ async function speakEleven(text, gender, onLevel) {
     onLevel(Math.min(1, (s / buf.length) / 22));
     raf = requestAnimationFrame(loop);
   };
-  return new Promise((res) => {
-    const done = () => { cancelAnimationFrame(raf); onLevel(0); URL.revokeObjectURL(url); res(); };
+  return new Promise((res,reject) => {
+    const cleanup = () => {cancelAnimationFrame(raf);src.disconnect();an.disconnect();onLevel(0);URL.revokeObjectURL(url);};
+    const done = () => {cleanup();res();};
     current = { stop: () => { audio.pause(); done(); } };
-    audio.onended = done; audio.onerror = done;
-    audio.play().then(loop).catch(done);
+    audio.onended = () => {announce("elevenlabs","completed");done();};
+    audio.onerror = () => {cleanup();reject(Error("Unable to decode ElevenLabs audio"));};
+    audio.play().then(() => {announce("elevenlabs");loop();}).catch((error) => {cleanup();reject(error);});
   });
 }
 
@@ -125,7 +133,7 @@ function browserListener(onInterim) {
 }
 
 function elevenListener(onInterim, onLevel) {
-  let rec, stream, raf, chunks = [];
+  let rec, stream, raf, stopTimer, stopped, chunks = [];
   const ready = navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then((s) => {
     stream = s;
     const ctx = audioCtx();
@@ -135,15 +143,18 @@ function elevenListener(onInterim, onLevel) {
     const loop = () => { an.getByteTimeDomainData(buf); let m = 0; for (const v of buf) m += Math.abs(v - 128); onLevel(Math.min(1, m / buf.length / 18)); raf = requestAnimationFrame(loop); };
     loop();
     rec = new MediaRecorder(s);
+    stopped = new Promise((resolve) => {rec.onstop = resolve;});
     rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
     rec.start();
+    stopTimer = setTimeout(() => {if(rec.state!=="inactive") rec.stop();stream?.getTracks().forEach((t)=>t.stop());},30000);
     onInterim("…");
   });
-  const cleanup = () => { cancelAnimationFrame(raf); onLevel(0); stream?.getTracks().forEach((t) => t.stop()); };
+  const cleanup = () => { clearTimeout(stopTimer);cancelAnimationFrame(raf); onLevel(0); stream?.getTracks().forEach((t) => t.stop()); };
   return {
     stop: async () => {
-      await ready;
-      await new Promise((r) => { rec.onstop = r; rec.stop(); });
+      try {await ready;} catch {cleanup();return "";}
+      if(rec.state!=="inactive") rec.stop();
+      await stopped;
       cleanup();
       const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
       const fd = new FormData();

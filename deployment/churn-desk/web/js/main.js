@@ -30,6 +30,11 @@ async function boot() {
     return;
   }
   voice.setMode(state.config.voice);
+  const voiceLabel=$("#voiceRuntime");
+  if(voiceLabel) {
+    voiceLabel.textContent=state.config.voice==="elevenlabs" ? "الصوت: ElevenLabs" : "الصوت: المتصفح";
+    voiceLabel.dataset.provider=state.config.voice;
+  }
   await hide("#boot");
   show("#lock");
   const saved = (() => { try { return localStorage.getItem("rs-emp") || ""; } catch { return ""; } })();
@@ -40,6 +45,14 @@ async function boot() {
   setTimeout(() => inp.focus(), 600);
   lockStory();
 }
+
+window.addEventListener("voice-status",({detail}) => {
+  const label=$("#voiceRuntime");
+  if(!label) return;
+  label.textContent=detail.provider==="elevenlabs" ? "الصوت: ElevenLabs" : "الصوت: المتصفح (تعذّر ElevenLabs)";
+  label.dataset.provider=detail.provider;
+  label.dataset.status=detail.status;
+});
 
 // Lock-screen notifications that set the scene before you log in.
 async function lockStory() {

@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "backend": "https://churn-desk-ae1.majedx10.chatgpt.site",
+  "config": {
+    "configured": true,
+    "provider": "elevenlabs",
+    "tts_model": "eleven_multilingual_v2",
+    "stt_model": "scribe_v2",
+    "max_recording_seconds": 30
+  },
+  "recordings": [
+    {
+      "gender": "male",
+      "bytes": 82798,
+      "duration_seconds": 5.10839,
+      "sha256": "bf2cf9d6886f68dd013c85f640fd6bb636a46f245620314616d43c0b45c19116",
+      "file": "elevenlabs-male.mp3"
+    },
+    {
+      "gender": "female",
+      "bytes": 77783,
+      "duration_seconds": 4.783311,
+      "sha256": "65ad1d9547907bc1c71a7ca20f353e0eef2dbd7f401847bbbfb57d3146fde291",
+      "file": "elevenlabs-female.mp3"
+    }
+  ],
+  "arabic_round_trip": {
+    "text": "مرحبًا. هذا اختبار صوت مكتب رصين باستخدام ElevenLabs",
+    "provider": "elevenlabs"
+  },
+  "source_phrase": "مرحباً، هذا اختبار صوت مكتب رصين باستخدام إلفن لابز."
+}

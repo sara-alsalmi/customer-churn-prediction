@@ -73,6 +73,8 @@ It's an Arabic call-center desk: you answer calls from real clients in the test 
 
 The code is in [deployment/churn-desk](deployment/churn-desk/README.md). It has a FastAPI app and a browser version.
 
+The public demo uses [ElevenLabs speech and Arabic transcription](deployment/voice-backend/README.md) through a hosted backend. API credentials stay on the server; visitors need no account or key. The app falls back to browser speech if the voice service is unavailable.
+
 ## Presentation
 
 **[Open the presentation](https://sara-alsalmi.github.io/customer-churn-prediction/)** in your browser.

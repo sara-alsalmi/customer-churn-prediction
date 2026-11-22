@@ -23,3 +23,8 @@ deployment/churn-desk/web/data/
 deployment/churn-desk/web/artifacts/
 .pytest_cache/
 core
+
+# Voice backend build and local credentials
+deployment/voice-backend/dist/
+.env.*
+!.env.example
